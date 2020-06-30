@@ -478,6 +478,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
         if (result == 0) {
             result = ((HostedType) this.getSignature().getReturnType(null)).compareTo((HostedType) other.getSignature().getReturnType(null));
         }
+
         assert result != 0;
         return result;
     }

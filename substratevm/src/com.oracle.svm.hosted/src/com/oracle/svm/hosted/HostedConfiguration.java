@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
@@ -31,6 +32,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 
+import com.oracle.svm.hosted.image.LIRNativeImageCodeCache;
+import com.oracle.svm.hosted.image.NativeImageCodeCache;
+import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
+import com.oracle.svm.hosted.image.NativeImageHeap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
@@ -56,6 +61,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
 import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.nativeimage.Platform;
 
 public class HostedConfiguration {
 
@@ -77,6 +83,7 @@ public class HostedConfiguration {
             ImageSingletons.add(ObjectLayout.class, objectLayout);
 
             ImageSingletons.add(HybridLayoutSupport.class, new HybridLayoutSupport());
+            ImageSingletons.lookup(HostedConfiguration.class).registerCodeCacheFactory();
         }
     }
 
@@ -192,6 +199,25 @@ public class HostedConfiguration {
     private static void setMonitorField(HostedUniverse hUniverse, AnalysisType type) {
         final HostedInstanceClass hostedInstanceClass = (HostedInstanceClass) hUniverse.lookup(type);
         hostedInstanceClass.setNeedMonitorField();
+    }
+
+    public void registerCodeCacheFactory() {
+        if (SubstrateOptions.useLLVMBackend()) {
+            // on the llvm backed the code cache factory is added
+            // via the LLVMFeature
+            return;
+        }
+
+        ImageSingletons.add(NativeImageCodeCacheFactory.class, newCodeCacheFactory());
+    }
+
+    protected NativeImageCodeCacheFactory newCodeCacheFactory() {
+        return new NativeImageCodeCacheFactory() {
+            @Override
+            public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform targetPlatform, Path tempDir) {
+                return new LIRNativeImageCodeCache(compileQueue.getCompilations(), heap);
+            }
+        };
     }
 
     public boolean isUsingAOTProfiles() {
