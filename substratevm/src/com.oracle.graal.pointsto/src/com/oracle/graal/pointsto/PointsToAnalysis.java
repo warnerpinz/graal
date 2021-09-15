@@ -348,6 +348,7 @@ public abstract class PointsToAnalysis implements BigBang {
         return metaAccess;
     }
 
+    @Override
     public Replacements getReplacements() {
         return replacements;
     }
