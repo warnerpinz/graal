@@ -351,6 +351,11 @@ public class HostedUniverse implements Universe {
 
     @Override
     public HostedField lookup(JavaField field) {
+        if (field == null) {
+            System.err.println("Trying to lookup a field, which is null");
+            new RuntimeException().printStackTrace();
+            return null;
+        }
         JavaField result = lookupAllowUnresolved(field);
         if (result instanceof ResolvedJavaField) {
             return (HostedField) result;
@@ -373,6 +378,10 @@ public class HostedUniverse implements Universe {
 
     @Override
     public HostedMethod lookup(JavaMethod method) {
+        if (method == null) {
+            System.err.println("Trying to lookup a method, which is null");
+            return null;
+        }
         JavaMethod result = lookupAllowUnresolved(method);
         if (result instanceof ResolvedJavaMethod) {
             return (HostedMethod) result;
