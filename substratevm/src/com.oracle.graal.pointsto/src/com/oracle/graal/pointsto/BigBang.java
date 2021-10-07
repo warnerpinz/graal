@@ -93,6 +93,8 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
 
     void runAnalysis(DebugContext debug, Function<AnalysisUniverse, Boolean> duringAnalysisAction) throws InterruptedException;
 
+    boolean strengthenGraalGraphs();
+
     Replacements getReplacements();
 
     /** You can blacklist certain callees here. */
