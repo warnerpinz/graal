@@ -63,7 +63,6 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.reachability.MethodSummary;
-import com.oracle.graal.reachability.SimpleInMemoryMethodSummaryProvider;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.hosted.analysis.NativeImageReachabilityAnalysis;
 import com.oracle.graal.pointsto.util.TimerCollection;
@@ -1212,7 +1211,7 @@ public class NativeImageGenerator {
 
         if (NativeImageOptions.UseExperimentalReachabilityAnalysis.getValue()) {
             return new NativeImageReachabilityAnalysis(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback,
-                            new SimpleInMemoryMethodSummaryProvider(aUniverse));
+                            HostedConfiguration.instance().createMethodSummaryProvider(aUniverse, aMetaAccess));
         }
         return new NativeImagePointsToAnalysis(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback, new SubstrateUnsupportedFeatures(),
                         ImageSingletons.lookup(TimerCollection.class));
