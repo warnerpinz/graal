@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -58,7 +59,6 @@ import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
-import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveTearDownIsolateEpilogue;
@@ -100,8 +100,8 @@ final class JNIInvocationInterface {
          * jint JNI_GetCreatedJavaVMs(JavaVM **vmBuf, jsize bufLen, jsize *nVMs);
          */
 
-        @CEntryPoint(name = "JNI_GetCreatedJavaVMs", include = CEntryPoint.NotIncludedAutomatically.class)
-        @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
+        @CEntryPoint(name = "JNI_GetCreatedJavaVMs", include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.SymbolOnly)
+        @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
         @Uninterruptible(reason = "No Java context.")
         static int JNI_GetCreatedJavaVMs(JNIJavaVMPointer vmBuf, int bufLen, CIntPointer nVMs) {
             JNIJavaVMList.gather(vmBuf, bufLen, nVMs);
@@ -198,8 +198,8 @@ final class JNIInvocationInterface {
          * @see LogHandler
          * @see "https://docs.oracle.com/en/java/javase/14/docs/specs/jni/invocation.html#jni_createjavavm"
          */
-        @CEntryPoint(name = "JNI_CreateJavaVM", include = CEntryPoint.NotIncludedAutomatically.class)
-        @CEntryPointOptions(prologue = JNICreateJavaVMPrologue.class, publishAs = Publish.SymbolOnly)
+        @CEntryPoint(name = "JNI_CreateJavaVM", include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.SymbolOnly)
+        @CEntryPointOptions(prologue = JNICreateJavaVMPrologue.class)
         static int JNI_CreateJavaVM(JNIJavaVMPointer vmBuf, JNIEnvironmentPointer penv, JNIJavaVMInitArgs vmArgs) {
             // NOTE: could check version, extra options (-verbose etc.), hooks etc.
             WordPointer javavmIdPointer = WordFactory.nullPointer();
@@ -244,8 +244,8 @@ final class JNIInvocationInterface {
         /*
          * jint JNI_GetDefaultJavaVMInitArgs(void *vm_args);
          */
-        @CEntryPoint(name = "JNI_GetDefaultJavaVMInitArgs", include = CEntryPoint.NotIncludedAutomatically.class)
-        @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
+        @CEntryPoint(name = "JNI_GetDefaultJavaVMInitArgs", include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.SymbolOnly)
+        @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
         @Uninterruptible(reason = "No Java context")
         static int JNI_GetDefaultJavaVMInitArgs(JNIJavaVMInitArgs vmArgs) {
             int version = vmArgs.getVersion();
@@ -263,8 +263,8 @@ final class JNIInvocationInterface {
     /*
      * jint AttachCurrentThread(JavaVM *vm, void **p_env, void *thr_args);
      */
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadManualJavaThreadPrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadManualJavaThreadPrologue.class)
     static int AttachCurrentThread(JNIJavaVM vm, JNIEnvironmentPointer penv, JNIJavaVMAttachArgs args) {
         return Support.attachCurrentThread(vm, penv, args, false);
     }
@@ -272,8 +272,8 @@ final class JNIInvocationInterface {
     /*
      * jint AttachCurrentThreadAsDaemon(JavaVM *vm, void **p_env, void *thr_args);
      */
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadManualJavaThreadPrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadManualJavaThreadPrologue.class)
     static int AttachCurrentThreadAsDaemon(JNIJavaVM vm, JNIEnvironmentPointer penv, JNIJavaVMAttachArgs args) {
         return Support.attachCurrentThread(vm, penv, args, true);
     }
@@ -281,8 +281,8 @@ final class JNIInvocationInterface {
     /*
      * jint DetachCurrentThread(JavaVM *vm);
      */
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue.class, epilogue = LeaveDetachThreadEpilogue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue.class, epilogue = LeaveDetachThreadEpilogue.class)
     static int DetachCurrentThread(JNIJavaVM vm) {
         int result = JNIErrors.JNI_OK();
         if (!vm.equal(JNIFunctionTables.singleton().getGlobalJavaVM())) {
@@ -296,8 +296,8 @@ final class JNIInvocationInterface {
     /*
      * jint DestroyJavaVM(JavaVM *vm);
      */
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue.class, epilogue = LeaveTearDownIsolateEpilogue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue.class, epilogue = LeaveTearDownIsolateEpilogue.class)
     @SuppressWarnings("unused")
     static int DestroyJavaVM(JNIJavaVM vm) {
         JavaThreads.singleton().joinAllNonDaemons();
@@ -307,8 +307,8 @@ final class JNIInvocationInterface {
     /*
      * jint GetEnv(JavaVM *vm, void **env, jint version);
      */
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIGetEnvPrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIGetEnvPrologue.class)
     @SuppressWarnings("unused")
     static int GetEnv(JNIJavaVM vm, WordPointer env, int version) {
         env.write(JNIThreadLocalEnvironment.getAddress());
