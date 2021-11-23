@@ -29,9 +29,9 @@ import static com.oracle.svm.hosted.NativeImageOptions.DiagnosticsMode;
 import static org.graalvm.compiler.hotspot.JVMCIVersionCheck.OPEN_LABSJDK_RELEASE_URL_PATTERN;
 import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
 
-import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.ref.Reference;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -56,12 +56,14 @@ import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
+import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.reachability.MethodSummary;
 import com.oracle.graal.reachability.SimpleInMemoryMethodSummaryProvider;
 import com.oracle.graal.reachability.summaries.MethodSummaryStorage;
