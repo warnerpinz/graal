@@ -119,7 +119,9 @@ public class TypeInitializerGraph {
     }
 
     boolean isUnsafe(AnalysisType type) {
-        return types.get(type) == Safety.UNSAFE;
+        // todo fix
+        return true;
+        // return types.get(type) == Safety.UNSAFE;
     }
 
     public void setUnsafe(AnalysisType t) {
