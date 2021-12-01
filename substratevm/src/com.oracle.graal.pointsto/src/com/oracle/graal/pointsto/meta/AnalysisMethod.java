@@ -655,6 +655,9 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
     }
 
     public String getReason() {
+        if (reason == null) {
+            return "no reason - it just happened :O";
+        }
         if (reason instanceof StackTraceElement[]) {
             return Arrays.toString(((StackTraceElement[]) reason));
         }
