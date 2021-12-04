@@ -151,6 +151,7 @@ public final class RuntimeCodeInfoAccess {
         return objectFields;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     public static boolean areAllObjectsOnImageHeap(CodeInfo info) {
         return cast(info).getAllObjectsAreInImageHeap();
     }
@@ -158,6 +159,7 @@ public final class RuntimeCodeInfoAccess {
     /**
      * Walks all strong references in a {@link CodeInfo} object.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     public static boolean walkStrongReferences(CodeInfo info, ObjectReferenceVisitor visitor) {
         return NonmovableArrays.walkUnmanagedObjectArray(cast(info).getObjectFields(), visitor, CodeInfoImpl.FIRST_STRONGLY_REFERENCED_OBJFIELD, CodeInfoImpl.STRONGLY_REFERENCED_OBJFIELD_COUNT);
     }
@@ -166,6 +168,7 @@ public final class RuntimeCodeInfoAccess {
      * Walks all weak references in a {@link CodeInfo} object.
      */
     @DuplicatedInNativeCode
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     public static boolean walkWeakReferences(CodeInfo info, ObjectReferenceVisitor visitor) {
         CodeInfoImpl impl = cast(info);
         boolean continueVisiting = true;
@@ -186,6 +189,7 @@ public final class RuntimeCodeInfoAccess {
      * This method only visits a very specific subset of all the references, so you typically want
      * to use {@link #walkStrongReferences} and/or {@link #walkWeakReferences} instead.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     public static boolean walkObjectFields(CodeInfo info, ObjectReferenceVisitor visitor) {
         return NonmovableArrays.walkUnmanagedObjectArray(cast(info).getObjectFields(), visitor);
     }
