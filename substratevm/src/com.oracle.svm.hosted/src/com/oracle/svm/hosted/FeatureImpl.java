@@ -399,6 +399,7 @@ public class FeatureImpl {
                 aField.registerAsUnsafeAccessed(partitionKind);
                 /* Force the update of registered unsafe loads and stores. */
                 bb.forceUnsafeUpdate(aField);
+                bb.markFieldUnsafeAccessed(aField);
                 return true;
             }
             return false;
