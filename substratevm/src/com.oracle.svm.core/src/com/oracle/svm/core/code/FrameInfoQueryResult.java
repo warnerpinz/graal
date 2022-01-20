@@ -39,6 +39,9 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
+import java.lang.module.ModuleDescriptor;
+import java.util.Optional;
+
 public class FrameInfoQueryResult {
 
     public enum ValueType {
@@ -328,13 +331,22 @@ public class FrameInfoQueryResult {
      * Returns the name and source code location of the method.
      */
     public StackTraceElement getSourceReference() {
-        /*
-         * According to StackTraceElement undefined className is denoted by "", undefined fileName
-         * is denoted by null
-         */
-        final String className = sourceClass != null ? sourceClass.getName() : "";
-        String sourceFileName = sourceClass != null ? DynamicHub.fromClass(sourceClass).getSourceFileName() : null;
-        return new StackTraceElement(className, sourceMethodName, sourceFileName, sourceLineNumber);
+        if (sourceClass == null) {
+            return new StackTraceElement("", sourceMethodName, null, sourceLineNumber);
+        }
+
+        String classLoaderName = sourceClass.getClassLoader() != null ? sourceClass.getClassLoader().getName() : null;
+        String moduleName = null;
+        String moduleVersion = null;
+        Module module = sourceClass.getModule();
+        if (module != null) {
+            moduleName = module.getName();
+            Optional<ModuleDescriptor.Version> version = module.getDescriptor() != null ? module.getDescriptor().version() : Optional.empty();
+            moduleVersion = version.map(ModuleDescriptor.Version::toString).orElse(null);
+        }
+        String className = sourceClass.getName();
+        String sourceFileName = DynamicHub.fromClass(sourceClass).getSourceFileName();
+        return new StackTraceElement(classLoaderName, moduleName, moduleVersion, className, sourceMethodName, sourceFileName, sourceLineNumber);
     }
 
     public boolean isNativeMethod() {
