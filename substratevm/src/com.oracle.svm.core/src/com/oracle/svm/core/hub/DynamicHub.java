@@ -292,6 +292,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setModule(Module module) {
+        assert module != null;
         this.module = module;
     }
 

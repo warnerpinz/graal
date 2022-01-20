@@ -404,9 +404,7 @@ public class SVMHost implements HostVM {
                         isLocalClass(javaClass), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName,
                         modifiers, hubClassLoader, isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(),
                         type.declaresDefaultMethods(), isSealed);
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
-        }
+        ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
         return dynamicHub;
     }
 
