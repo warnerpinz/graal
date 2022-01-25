@@ -335,10 +335,12 @@ public class FrameInfoQueryResult {
             return new StackTraceElement("", sourceMethodName, null, sourceLineNumber);
         }
 
-        String classLoaderName = sourceClass.getClassLoader() != null ? sourceClass.getClassLoader().getName() : null;
+        ClassLoader classLoader = sourceClass.getClassLoader();
+        String classLoaderName = classLoader != null ? classLoader.getName() : null;
         Module module = sourceClass.getModule();
         String moduleName = module.getName();
-        Optional<ModuleDescriptor.Version> version = module.getDescriptor() != null ? module.getDescriptor().version() : Optional.empty();
+        ModuleDescriptor moduleDescriptor = module.getDescriptor();
+        Optional<ModuleDescriptor.Version> version = moduleDescriptor != null ? moduleDescriptor.version() : Optional.empty();
         String moduleVersion = version.map(ModuleDescriptor.Version::toString).orElse(null);
         String className = sourceClass.getName();
         String sourceFileName = DynamicHub.fromClass(sourceClass).getSourceFileName();
