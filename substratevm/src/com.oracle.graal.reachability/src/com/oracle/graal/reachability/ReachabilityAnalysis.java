@@ -25,9 +25,7 @@
 package com.oracle.graal.reachability;
 
 import com.oracle.graal.pointsto.AbstractReachabilityAnalysis;
-import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.api.HostVM;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -36,6 +34,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.Timer;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
@@ -217,9 +216,9 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
     }
 
     @Override
-    public void markTypeReachable(AnalysisType type) {
+    public boolean markTypeReachable(AnalysisType type) {
         // todo double check whether all necessary logic is in
-        type.registerAsReachable();
+        return type.registerAsReachable();
     }
 
     @Override
@@ -228,11 +227,12 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         type.registerAsInHeap();
     }
 
-    public void markTypeInstantiated(AnalysisType type) {
+    public boolean markTypeInstantiated(AnalysisType type) {
         if (!type.registerAsAllocated(null)) {
-            return;
+            return false;
         }
         schedule(() -> onTypeInstantiated(type));
+        return true;
     }
 
     private void onTypeInstantiated(AnalysisType type) {
@@ -281,21 +281,15 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
     @Override
     public boolean finish() throws InterruptedException {
         universe.setAnalysisDataValid(false);
-
-        int numTypes;
-        do {
-            runReachability();
-
-            assert executor.getPostedOperations() == 0;
-            numTypes = universe.getTypes().size();
-
-            checkObjectGraph();
-
-        } while (executor.getPostedOperations() != 0 || numTypes != universe.getTypes().size());
-
+        runReachability();
+        assert executor.getPostedOperations() == 0;
         universe.setAnalysisDataValid(true);
-
         return true;
+    }
+
+    @Override
+    public void postTask(CompletionExecutor.DebugContextRunnable task) {
+        executor.execute(task);
     }
 
     @SuppressWarnings("try")
@@ -321,24 +315,45 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
                                     "The analysis itself %s find a change in type states in the last iteration.",
                                     numIterations, analysisChanged ? "DID" : "DID NOT"));
                 }
-
                 /*
                  * Allow features to change the universe.
                  */
-                try (Timer.StopTimer t2 = getProcessFeaturesTimer().start()) {
-                    int numTypes = universe.getTypes().size();
-                    int numMethods = universe.getMethods().size();
-                    int numFields = universe.getFields().size();
-                    if (analysisEndCondition.apply(universe)) {
-                        if (numTypes != universe.getTypes().size() || numMethods != universe.getMethods().size() || numFields != universe.getFields().size()) {
-                            throw AnalysisError.shouldNotReachHere(
-                                            "When a feature makes more types, methods, or fields reachable, it must require another analysis iteration via DuringAnalysisAccess.requireAnalysisIteration()");
-                        }
+                int numTypes = universe.getTypes().size();
+                int numMethods = universe.getMethods().size();
+                int numFields = universe.getFields().size();
+                if (analysisEndCondition.apply(universe)) {
+                    if (numTypes != universe.getTypes().size() || numMethods != universe.getMethods().size() || numFields != universe.getFields().size()) {
+                        throw AnalysisError.shouldNotReachHere(
+                                        "When a feature makes more types, methods, or fields reachable, it must require another analysis iteration via DuringAnalysisAccess.requireAnalysisIteration()");
+                    }
+                    /*
+                     * Manual rescanning doesn't explicitly require analysis iterations, but it can
+                     * insert some pending operations.
+                     */
+                    boolean pendingOperations = executor.getPostedOperations() > 0;
+                    if (pendingOperations) {
+                        System.out.println("Found pending operations, continuing analysis.");
+                        continue;
+                    }
+                    /* Outer analysis loop is done. Check if heap verification modifies analysis. */
+                    if (!analysisModified()) {
                         return;
                     }
                 }
             }
         }
+    }
+
+    @SuppressWarnings("try")
+    private boolean analysisModified() throws InterruptedException {
+        boolean analysisModified;
+        // todo rename timer
+        try (Timer.StopTimer ignored = checkObjectsTimer.start()) {
+            analysisModified = universe.getHeapVerifier().requireAnalysisIteration(executor);
+        }
+        /* Initialize for the next iteration. */
+        executor.init(timing);
+        return analysisModified;
     }
 
     @SuppressWarnings("try")
@@ -352,31 +367,6 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
             executor.init(timing);
         }
     }
-
-    private final ObjectScanner.ReusableSet scannedObjects = new ObjectScanner.ReusableSet();
-
-    @SuppressWarnings("try")
-    private void checkObjectGraph() throws InterruptedException {
-        try (Timer.StopTimer t = checkObjectsTimer.start()) {
-            scannedObjects.reset();
-            // scan constants
-            boolean isParallel = PointstoOptions.ScanObjectsParallel.getValue(options);
-            ObjectScanner objectScanner = new ObjectScanner(this, isParallel ? executor : null, scannedObjects, new ReachabilityObjectScanner(this, metaAccess)) {
-            };
-            checkObjectGraph(objectScanner);
-            if (isParallel) {
-                executor.start();
-                objectScanner.scanBootImageHeapRoots(null, null);
-                executor.complete();
-                executor.shutdown();
-                executor.init(timing);
-            } else {
-                objectScanner.scanBootImageHeapRoots(null, null);
-            }
-        }
-    }
-
-    protected abstract void checkObjectGraph(ObjectScanner objectScanner);
 
     @Override
     public void cleanupAfterAnalysis() {

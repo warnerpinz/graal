@@ -80,15 +80,6 @@ public class NativeImageReachabilityAnalysis extends ReachabilityAnalysis implem
     }
 
     @Override
-    protected void checkObjectGraph(ObjectScanner objectScanner) {
-        universe.getFields().forEach(this::handleUnknownValueField);
-        universe.getTypes().stream().filter(AnalysisType::isReachable).forEach(dynamicHubInitializer::initializeMetaData);
-
-        /* Scan hubs of all types that end up in the native image. */
-        universe.getTypes().stream().filter(AnalysisType::isReachable).forEach(type -> scanHub(objectScanner, type));
-    }
-
-    @Override
     public void cleanupAfterAnalysis() {
         super.cleanupAfterAnalysis();
         handledUnknownValueFields = null;
@@ -107,6 +98,11 @@ public class NativeImageReachabilityAnalysis extends ReachabilityAnalysis implem
     @Override
     public void checkUserLimitations() {
         // todo
+    }
+
+    @Override
+    public void initializeMetaData(AnalysisType type) {
+        dynamicHubInitializer.initializeMetaData(universe.getHeapScanner(), type);
     }
 
     private void scanHub(ObjectScanner objectScanner, AnalysisType type) {

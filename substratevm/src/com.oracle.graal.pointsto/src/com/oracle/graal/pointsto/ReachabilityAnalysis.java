@@ -68,7 +68,7 @@ public interface ReachabilityAnalysis {
      */
     AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial);
 
-    void markTypeReachable(AnalysisType type);
+    boolean markTypeReachable(AnalysisType type);
 
     void markTypeInHeap(AnalysisType type);
 
