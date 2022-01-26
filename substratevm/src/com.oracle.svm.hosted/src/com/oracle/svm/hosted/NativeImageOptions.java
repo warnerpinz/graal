@@ -84,16 +84,16 @@ public class NativeImageOptions {
     public static final HostedOptionKey<Boolean> PrintAOTCompilation = new HostedOptionKey<>(false);
 
     @Option(help = "Print class statistics of native image heap")//
-    public static final HostedOptionKey<Boolean> PrintHeapHistogram = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> PrintHeapHistogram = new HostedOptionKey<>(true);
 
     @Option(help = "Print statistics of methods in native image heap")//
-    public static final HostedOptionKey<Boolean> PrintMethodHistogram = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> PrintMethodHistogram = new HostedOptionKey<>(true);
 
     @Option(help = "Print the sizes of the elements of the built image")//
-    public static final HostedOptionKey<Boolean> PrintImageElementSizes = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> PrintImageElementSizes = new HostedOptionKey<>(true);
 
     @Option(help = "Print the sizes of the native image heap as the image is built")//
-    public static final HostedOptionKey<Boolean> PrintImageHeapPartitionSizes = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> PrintImageHeapPartitionSizes = new HostedOptionKey<>(true);
 
     @Option(help = "Print a list of active features")//
     public static final HostedOptionKey<Boolean> PrintFeatures = new HostedOptionKey<>(false);

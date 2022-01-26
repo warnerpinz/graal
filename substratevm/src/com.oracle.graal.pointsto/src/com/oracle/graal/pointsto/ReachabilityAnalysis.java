@@ -73,7 +73,7 @@ public interface ReachabilityAnalysis {
      */
     AnalysisMethod addRootMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes);
 
-    void markTypeReachable(AnalysisType type);
+    boolean markTypeReachable(AnalysisType type);
 
     void markTypeInHeap(AnalysisType type);
 

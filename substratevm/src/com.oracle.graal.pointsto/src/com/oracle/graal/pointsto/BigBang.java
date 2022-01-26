@@ -28,6 +28,7 @@ import java.io.PrintWriter;
 import java.util.List;
 import java.util.function.Function;
 
+import com.oracle.graal.pointsto.util.CompletionExecutor;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -41,20 +42,10 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisType.UsageKind;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.spi.Replacements;
-import org.graalvm.compiler.options.OptionValues;
-
-import java.io.PrintWriter;
-import java.util.List;
-import java.util.function.Function;
 
 
 /**
@@ -130,4 +121,8 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
     @SuppressWarnings("unused")
     default void onTypeInitialized(AnalysisType type) {
     }
+
+    void postTask(CompletionExecutor.DebugContextRunnable task);
+
+    void initializeMetaData(AnalysisType type);
 }
