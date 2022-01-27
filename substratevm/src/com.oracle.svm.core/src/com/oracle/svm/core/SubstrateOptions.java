@@ -265,7 +265,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> ForceNoROSectionRelocations = new HostedOptionKey<>(false);
 
     @Option(help = "Support multiple isolates.") //
-    public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<>(null) {
+    public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<>(false) {
         @Override
         public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
             if (!values.containsKey(this)) {
@@ -530,7 +530,7 @@ public class SubstrateOptions {
 
     @APIOption(name = "-g", fixedValue = "2", customHelp = "generate debugging information")//
     @Option(help = "Insert debug info into the generated native image or library")//
-    public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0) {
+    public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(1) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
             debugInfoValueUpdateHandler.onValueUpdate(values, oldValue, newValue);

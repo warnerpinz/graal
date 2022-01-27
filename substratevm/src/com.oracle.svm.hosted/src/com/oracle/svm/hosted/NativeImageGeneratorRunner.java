@@ -607,6 +607,7 @@ public class NativeImageGeneratorRunner {
     public static class JDK9Plus {
 
         public static void main(String[] args) {
+            System.out.println("here");
             ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.sdk", false);
             ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle", false);
             ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.ci", false);
