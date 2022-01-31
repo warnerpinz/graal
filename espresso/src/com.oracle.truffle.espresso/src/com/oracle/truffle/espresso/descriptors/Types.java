@@ -102,6 +102,17 @@ public final class Types {
         return result;
     }
 
+    public Symbol<Type> getOrCreate(String name) {
+        return getOrCreate(ByteSequence.create(name));
+    }
+
+    public Symbol<Type> getOrCreate(ByteSequence name) {
+        if (!Validation.validTypeDescriptor(name, false)) {
+            return null;
+        }
+        return symbols.symbolify(name);
+    }
+
     @TruffleBoundary
     public Symbol<Type> fromClassGetName(String className) {
         return symbols.symbolify(ByteSequence.create(checkType(internalFromClassName(className))));
