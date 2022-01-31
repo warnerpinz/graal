@@ -63,7 +63,7 @@ import com.oracle.truffle.espresso.substitutions.Substitutions;
 @Registration(id = EspressoLanguage.ID, //
                 name = EspressoLanguage.NAME, //
                 implementationName = EspressoLanguage.IMPLEMENTATION_NAME, //
-                contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, //
+                contextPolicy = TruffleLanguage.ContextPolicy.SHARED, //
                 dependentLanguages = "nfi")
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
@@ -86,8 +86,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private final Names names;
     private final Types types;
     private final Signatures signatures;
-
-    private long startupClockNanos = 0;
 
     private static final StaticProperty ARRAY_PROPERTY = new DefaultStaticProperty("array");
     // This field should be static final, but until we move the static object model we cannot have a
@@ -139,13 +137,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected void initializeContext(final EspressoContext context) throws Exception {
-        startupClockNanos = System.nanoTime();
         context.initializeContext();
     }
 
     @Override
     protected void finalizeContext(EspressoContext context) {
-        long elapsedTimeNanos = System.nanoTime() - startupClockNanos;
+        long elapsedTimeNanos = System.nanoTime() - context.getStartupClockNanos();
         long seconds = TimeUnit.NANOSECONDS.toSeconds(elapsedTimeNanos);
         if (seconds > 10) {
             context.getLogger().log(Level.FINE, "Time spent in Espresso: {0} s", seconds);

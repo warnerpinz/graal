@@ -121,32 +121,33 @@ public final class EspressoContext {
     private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID);
 
     private final EspressoLanguage language;
-    private final TruffleLanguage.Env env;
+    @CompilationFinal private TruffleLanguage.Env env;
 
     private String[] mainArguments;
     private String[] vmArguments;
+    private long startupClockNanos = 0;
 
     // region Debug
-    private final TimerCollection timers;
+    @CompilationFinal private TimerCollection timers;
     // endregion Debug
 
     // region Profiling
-    private final AllocationReporter allocationReporter;
+    @CompilationFinal private AllocationReporter allocationReporter;
     // endregion Profiling
 
     // region Runtime
     private final StringTable strings;
-    private final ClassRegistries registries;
+    @CompilationFinal private ClassRegistries registries;
     private final Substitutions substitutions;
     private final MethodHandleIntrinsics methodHandleIntrinsics;
-    private final ClassHierarchyOracle classHierarchyOracle;
+    @CompilationFinal private ClassHierarchyOracle classHierarchyOracle;
     // endregion Runtime
 
     // region Helpers
-    private final EspressoThreadRegistry threadRegistry;
+    @CompilationFinal private EspressoThreadRegistry threadRegistry;
     @CompilationFinal private ThreadsAccess threads;
-    private final EspressoShutdownHandler shutdownManager;
-    private final EspressoReferenceDrainer referenceDrainer;
+    @CompilationFinal private EspressoShutdownHandler shutdownManager;
+    @CompilationFinal private EspressoReferenceDrainer referenceDrainer;
     // endregion Helpers
 
     // region ID
@@ -165,9 +166,9 @@ public final class EspressoContext {
     // endregion InitControl
 
     // region JDWP
-    private final JDWPContextImpl jdwpContext;
-    private final boolean shouldReportVMEvents;
-    private final VMEventListenerImpl eventListener;
+    @CompilationFinal private JDWPContextImpl jdwpContext;
+    @CompilationFinal private boolean shouldReportVMEvents;
+    @CompilationFinal private VMEventListenerImpl eventListener;
     private ClassRedefinition classRedefinition;
     // endregion JDWP
 
@@ -180,27 +181,27 @@ public final class EspressoContext {
     // Checkstyle: stop field name check
 
     // Performance control
-    public final boolean InlineFieldAccessors;
-    public final boolean InlineMethodHandle;
-    public final boolean SplitMethodHandles;
-    public final boolean livenessAnalysis;
-    public final boolean EnableClassHierarchyAnalysis;
+    @CompilationFinal public boolean InlineFieldAccessors;
+    @CompilationFinal public boolean InlineMethodHandle;
+    @CompilationFinal public boolean SplitMethodHandles;
+    @CompilationFinal public boolean livenessAnalysis;
+    @CompilationFinal public boolean EnableClassHierarchyAnalysis;
 
     // Behavior control
-    public final boolean EnableManagement;
-    public final EspressoOptions.VerifyMode Verify;
-    public final EspressoOptions.SpecCompliancyMode SpecCompliancyMode;
-    public final boolean Polyglot;
-    public final boolean HotSwapAPI;
-    public final boolean ExitHost;
-    public final boolean EnableSignals;
-    private final String multiThreadingDisabled;
-    public final boolean NativeAccessAllowed;
-    public final boolean EnableAgents;
-    public final int TrivialMethodSize;
+    @CompilationFinal public boolean EnableManagement;
+    @CompilationFinal public EspressoOptions.VerifyMode Verify;
+    @CompilationFinal public EspressoOptions.SpecCompliancyMode SpecCompliancyMode;
+    @CompilationFinal public boolean Polyglot;
+    @CompilationFinal public boolean HotSwapAPI;
+    @CompilationFinal public boolean ExitHost;
+    @CompilationFinal public boolean EnableSignals;
+    @CompilationFinal private String multiThreadingDisabled;
+    @CompilationFinal public boolean NativeAccessAllowed;
+    @CompilationFinal public boolean EnableAgents;
+    @CompilationFinal public int TrivialMethodSize;
 
     // Debug option
-    public final com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
+    @CompilationFinal public com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
 
     // Checkstyle: resume field name check
     // endregion Options
@@ -256,13 +257,19 @@ public final class EspressoContext {
     }
 
     public EspressoContext(TruffleLanguage.Env env, EspressoLanguage language) {
-        this.env = env;
         this.language = language;
 
-        this.registries = new ClassRegistries(this);
         this.strings = new StringTable(this);
         this.substitutions = new Substitutions(this);
         this.methodHandleIntrinsics = new MethodHandleIntrinsics(this);
+
+        setEnv(env);
+    }
+
+    private void setEnv(TruffleLanguage.Env env) {
+        this.env = env;
+
+        this.registries = new ClassRegistries(this);
 
         this.threadRegistry = new EspressoThreadRegistry(this);
         this.referenceDrainer = new EspressoReferenceDrainer(this);
@@ -439,6 +446,7 @@ public final class EspressoContext {
                         "Native access is not allowed by the host environment but it's required to load Espresso/Java native libraries. " +
                                         "Allow native access on context creation e.g. contextBuilder.allowNativeAccess(true)");
         assert !this.initialized;
+        startupClockNanos = System.nanoTime();
 
         // Setup finalization support in the host VM.
         FinalizationSupport.ensureInitialized();
@@ -450,6 +458,10 @@ public final class EspressoContext {
             jdwpContext.jdwpInit(env, getMainThread(), eventListener);
         }
         referenceDrainer.startReferenceDrain();
+    }
+
+    public long getStartupClockNanos() {
+        return startupClockNanos;
     }
 
     public Source findOrCreateSource(Method method) {
