@@ -47,6 +47,8 @@ import java.util.stream.Collectors;
 import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
 import com.oracle.truffle.espresso.ffi.nfi.NFINativeAccess;
 import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
+import com.oracle.truffle.espresso.impl.EspressoLanguageCache;
+import com.oracle.truffle.espresso.impl.ParserKlassCacheListSupport;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -125,7 +127,9 @@ public final class EspressoContext {
 
     private String[] mainArguments;
     private String[] vmArguments;
-    private long startupClockNanos = 0;
+    private long startupClockNanos;
+    private EspressoLanguageCache languageCache;
+    private EspressoLanguageCache.Env languageCacheEnv;
 
     // region Debug
     @CompilationFinal private TimerCollection timers;
@@ -136,10 +140,10 @@ public final class EspressoContext {
     // endregion Profiling
 
     // region Runtime
-    private final StringTable strings;
+    @CompilationFinal private StringTable strings;
     @CompilationFinal private ClassRegistries registries;
-    private final Substitutions substitutions;
-    private final MethodHandleIntrinsics methodHandleIntrinsics;
+    @CompilationFinal private Substitutions substitutions;
+    @CompilationFinal private MethodHandleIntrinsics methodHandleIntrinsics;
     @CompilationFinal private ClassHierarchyOracle classHierarchyOracle;
     // endregion Runtime
 
@@ -162,6 +166,7 @@ public final class EspressoContext {
     @CompilationFinal private boolean modulesInitialized = false;
     @CompilationFinal private boolean metaInitialized = false;
     private boolean initialized = false;
+    private boolean readyForSerialization = false;
     private Classpath bootClasspath;
     // endregion InitControl
 
@@ -215,6 +220,7 @@ public final class EspressoContext {
     @CompilationFinal private InterpreterToVM interpreterToVM;
     @CompilationFinal private JImageLibrary jimageLibrary;
     @CompilationFinal private EspressoProperties vmProperties;
+    @CompilationFinal private JavaVersion javaVersion;
     @CompilationFinal private AgentLibraries agents;
     @CompilationFinal private NativeAccess nativeAccess;
     // endregion VM
@@ -258,18 +264,18 @@ public final class EspressoContext {
 
     public EspressoContext(TruffleLanguage.Env env, EspressoLanguage language) {
         this.language = language;
-
-        this.strings = new StringTable(this);
-        this.substitutions = new Substitutions(this);
-        this.methodHandleIntrinsics = new MethodHandleIntrinsics(this);
-
+        setLanguageCache(EspressoLanguageCache.create());
+        setLanguageCacheEnv(new EspressoLanguageCache.Env());
         setEnv(env);
     }
 
-    private void setEnv(TruffleLanguage.Env env) {
+    public void setEnv(TruffleLanguage.Env env) {
         this.env = env;
 
+        this.strings = new StringTable(this);
         this.registries = new ClassRegistries(this);
+        this.substitutions = new Substitutions(this);
+        this.methodHandleIntrinsics = new MethodHandleIntrinsics(this);
 
         this.threadRegistry = new EspressoThreadRegistry(this);
         this.referenceDrainer = new EspressoReferenceDrainer(this);
@@ -323,6 +329,8 @@ public final class EspressoContext {
         } else {
             this.classHierarchyOracle = new NoOpClassHierarchyOracle();
         }
+
+        this.readyForSerialization = false;
     }
 
     private static Set<String> knownSingleThreadedLanguages(TruffleLanguage.Env env) {
@@ -365,6 +373,26 @@ public final class EspressoContext {
 
     public EspressoLanguage getLanguage() {
         return language;
+    }
+
+    public EspressoLanguageCache getLanguageCache() {
+        return languageCache;
+    }
+
+    public EspressoLanguageCache.Env getLanguageCacheEnv() {
+        return languageCacheEnv;
+    }
+
+    public void setLanguageCache(EspressoLanguageCache languageCache) {
+        this.languageCache = languageCache;
+    }
+
+    public void setLanguageCacheEnv(EspressoLanguageCache.Env languageCacheEnv) {
+        this.languageCacheEnv = languageCacheEnv;
+    }
+
+    public boolean isReadyForSerialization() {
+        return readyForSerialization;
     }
 
     public boolean multiThreadingEnabled() {
@@ -451,13 +479,29 @@ public final class EspressoContext {
         // Setup finalization support in the host VM.
         FinalizationSupport.ensureInitialized();
 
-        spawnVM();
-        this.initialized = true;
-        // enable JDWP instrumenter only if options are set (assumed valid if non-null)
-        if (JDWPOptions != null) {
-            jdwpContext.jdwpInit(env, getMainThread(), eventListener);
+        // Boot classpath needs to be preserved after pre-initialization in order to compare it with the runtime environment
+        // After patching of the pre-initialized context in runtime, we have to drop the old boot classpath
+        this.bootClasspath = null;
+
+        if (getEnv().isPreInitialization()) {
+            setLanguageCache(EspressoLanguageCache.preInitialized());
         }
-        referenceDrainer.startReferenceDrain();
+        spawnVM();
+        if (getEnv().isPreInitialization()) {
+            populateParserKlassCache();
+            prepareForSerialization();
+            this.readyForSerialization = true;
+        } else {
+            this.initialized = true;
+            // enable JDWP instrumenter only if options are set (assumed valid if non-null)
+            if (JDWPOptions != null) {
+                jdwpContext.jdwpInit(env, getMainThread(), eventListener);
+            }
+        }
+
+        if (!isReadyForSerialization()) {
+            referenceDrainer.startReferenceDrain();
+        }
     }
 
     public long getStartupClockNanos() {
@@ -482,6 +526,122 @@ public final class EspressoContext {
 
     public NativeAccess getNativeAccess() {
         return nativeAccess;
+    }
+
+    private void populateParserKlassCache() {
+        if (!getEnv().getOptions().get(EspressoOptions.UseParserKlassCache)) {
+            return;
+        }
+
+        long initStartTimeNanos = System.nanoTime();
+
+        ParserKlassCacheListSupport parserKlassCacheSupport = new ParserKlassCacheListSupport(getTypes());
+        StaticObject bootClassloader = registries.getBootClassRegistry().getClassLoader();
+        for (Symbol<Type> type : parserKlassCacheSupport.getDefaultTypeList(getJavaVersion())) {
+            addEntryToKlassCache(type, true, bootClassloader);
+        }
+
+        StaticObject systemClassLoader = null;
+        Path classListPath = getEnv().getOptions().get(EspressoOptions.BootKlassCacheList);
+        if (!classListPath.toString().isEmpty()) {
+            getLanguageCache().logCacheStatus();
+            getLogger().log(Level.FINE, "Populating boot parser cache with user-specified classes from: " + classListPath);
+
+            systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
+            for (Symbol<Type> type : parserKlassCacheSupport.getUserSpecifiedTypeList(classListPath)) {
+                addEntryToKlassCache(type, false, systemClassLoader);
+            }
+        }
+
+        getLanguageCache().seal();
+
+        classListPath = getEnv().getOptions().get(EspressoOptions.AppKlassCacheList);
+        if (!classListPath.toString().isEmpty()) {
+            getLanguageCache().logCacheStatus();
+            getLogger().log(Level.FINE, "Populating application parser cache with user-specified classes from: " + classListPath);
+
+            if (systemClassLoader == null) {
+                systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
+            }
+
+            for (Symbol<Type> type : parserKlassCacheSupport.getUserSpecifiedTypeList(classListPath)) {
+                addEntryToKlassCache(type, false, systemClassLoader);
+            }
+        }
+
+        initDoneTimeNanos = System.nanoTime();
+        long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;
+        getLogger().log(Level.FINE, "Populated parser cache in {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
+        getLanguageCache().logCacheStatus();
+    }
+
+    private void addEntryToKlassCache(Symbol<Type> type, boolean isBoot, StaticObject loader) {
+        Classpath cp;
+        if (isBoot) {
+            cp = getBootClasspath();
+            getLogger().log(Level.FINE, "Populating parser cache with type: {0}", type.toString());
+        } else {
+            cp = new Classpath(getVmProperties().classpath().stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
+            getLogger().log(Level.FINE, "Populating parser cache with user-specified type: {0}", type.toString());
+        }
+
+        ClasspathFile cpFile = cp.readClassFile(type);
+        if (cpFile != null) {
+            getRegistries().cacheKlass(type, cpFile.contents, loader);
+        } else {
+            getLogger().log(Level.WARNING, "User-specified parse list processor failed to read class: {0}", type.toString());
+        }
+    }
+
+    private void prepareForSerialization() {
+        getLogger().log(Level.FINE, "Preparing context for serialization");
+
+        try {
+            this.referenceDrainer.joinReferenceDrain();
+        } catch (InterruptedException e) {
+            getLogger().log(Level.FINE, "An error occurred while joining reference drainer");
+        }
+        if (vm.DetachCurrentThread(this) != JNI_OK) {
+            throw new RuntimeException("Could not detach current thread correctly");
+        }
+        this.threadRegistry.stopThreads();
+        this.bootClasspath.closeEntries();
+
+        getJNI().dispose();
+        this.vm.dispose();
+        this.nativeAccess = null;
+        this.jniEnv = null;
+        this.interpreterToVM = null;
+        this.vmProperties = null;
+        this.jimageLibrary = null;
+        this.vm = null;
+
+        this.threadRegistry = null;
+        this.threads = null;
+        this.shutdownManager = null;
+        this.referenceDrainer = null;
+        this.stackOverflow = null;
+        this.outOfMemory = null;
+        this.meta = null;
+
+        this.timers = null;
+        this.allocationReporter = null;
+        this.registries = null;
+        this.strings = null;
+        this.substitutions = null;
+        this.jdwpContext = null;
+        this.eventListener = null;
+        this.methodHandleIntrinsics = null;
+        this.topBindings = null;
+        this.hostSignalHandlers.clear();
+        this.agents = null;
+
+        this.modulesInitialized = false;
+        this.metaInitialized = false;
+
+        System.gc();
+
+        getLogger().log(Level.FINE, "Finished post-initialization cleanup");
     }
 
     @SuppressWarnings("try")
@@ -670,6 +830,8 @@ public final class EspressoContext {
         EspressoProperties.processOptions(builder, getEnv().getOptions());
         getNativeAccess().updateEspressoProperties(builder, getEnv().getOptions());
         vmProperties = builder.build();
+        javaVersion = new JavaVersion(vmProperties.bootClassPathType().getJavaVersion());
+        setLanguageCacheEnv(new EspressoLanguageCache.Env(getEnv()));
     }
 
     private void initializeKnownClass(Symbol<Type> type) {
@@ -707,7 +869,7 @@ public final class EspressoContext {
     }
 
     public JavaVersion getJavaVersion() {
-        return vm.getJavaVersion();
+        return vm != null ? vm.getJavaVersion() : javaVersion;
     }
 
     public boolean advancedRedefinitionEnabled() {
@@ -879,7 +1041,9 @@ public final class EspressoContext {
     }
 
     public void registerThread(Thread host, StaticObject self) {
-        threadRegistry.registerThread(host, self);
+        if (threadRegistry != null) {
+            threadRegistry.registerThread(host, self);
+        }
         if (shouldReportVMEvents) {
             eventListener.threadStarted(self);
         }
@@ -939,15 +1103,19 @@ public final class EspressoContext {
     }
 
     public void doExit(int code) {
-        shutdownManager.doExit(code);
+        if (shutdownManager != null) {
+            shutdownManager.doExit(code);
+        }
     }
 
     public void destroyVM(boolean killThreads) {
-        shutdownManager.destroyVM(killThreads);
+        if (shutdownManager != null) {
+            shutdownManager.destroyVM(killThreads);
+        }
     }
 
     public boolean isClosing() {
-        return shutdownManager.isClosing();
+        return shutdownManager == null || shutdownManager.isClosing();
     }
 
     public int getExitStatus() {

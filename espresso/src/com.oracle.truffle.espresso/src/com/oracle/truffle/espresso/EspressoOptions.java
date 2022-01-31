@@ -444,6 +444,32 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Integer> TrivialMethodSize = new OptionKey<>(18);
 
+    @Option(help = "Makes the pre-initialized context incompatible with the current environment.", //
+            category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> DropPreInitializedContext = new OptionKey<>(false);
+
+    @Option(help = "Enables ParserKlass caching for pre-initialized context (if invoked during image build time) " +
+            "or ignores the existing ParserKlass cache (if invoked at runtime).", //
+            category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> UseParserKlassCache = new OptionKey<>(true);
+
+    @Option(help = "Reports ParserKlass cache misses. The output can be used for creating a custom cache list.", //
+            category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> ReportParserKlassCacheMisses = new OptionKey<>(false);
+
+    @Option(help = "File containing a list of internal class names to load into the boot parser/linked cache during context pre-initialization.", //
+            category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Path> BootKlassCacheList = new OptionKey<>(EMPTY, PATH_OPTION_TYPE);
+
+    @Option(help = "File containing a list of internal class names to load into the application parser/linked cache during context pre-initialization.", //
+            category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Path> AppKlassCacheList = new OptionKey<>(EMPTY, PATH_OPTION_TYPE);
+
+    @Option(help = "Enables LinkedKlass caching for pre-initialized context (if invoked during image build time) " +
+            "or ignores the existing LinkedKlass cache (if invoked at runtime).", //
+            category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> UseLinkedKlassCache = new OptionKey<>(false);
+
     // These are host properties e.g. use --vm.Despresso.DebugCounters=true .
     public static final boolean DebugCounters = booleanProperty("espresso.DebugCounters", false);
     public static final boolean DumpDebugCounters = booleanProperty("espresso.DumpDebugCounters", true);

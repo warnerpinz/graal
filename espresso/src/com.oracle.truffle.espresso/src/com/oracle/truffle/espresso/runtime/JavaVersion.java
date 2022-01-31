@@ -128,4 +128,8 @@ public final class JavaVersion {
     public String toString() {
         return Integer.toString(version);
     }
+
+    public boolean matchesVersion(int versionNumber) {
+        return this.version == versionNumber;
+    }
 }
