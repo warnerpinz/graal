@@ -353,6 +353,19 @@ public abstract class ClassRegistry implements ContextAccess {
         return entry.klass();
     }
 
+    @SuppressWarnings("try")
+    public void cacheKlass(Symbol<Type> typeOrNull, final byte[] bytes) {
+        ClassDefinitionInfo info = ClassDefinitionInfo.EMPTY;
+        Meta meta = getMeta();
+        ParserKlass parserKlass;
+        try (DebugCloseable parse = KLASS_PARSE.scope(getContext().getTimers())) {
+            parserKlass = getParserKlass(bytes, typeOrNull, info);
+        }
+        Symbol<Type> type = typeOrNull == null ? parserKlass.getType() : typeOrNull;
+        Symbol<Type> superKlassType = parserKlass.getSuperKlass();
+        createKlass(meta, parserKlass, type, superKlassType, info);
+    }
+
     public final ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes) {
         return defineKlass(typeOrNull, bytes, ClassDefinitionInfo.EMPTY);
     }
@@ -386,7 +399,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
     private ParserKlass getParserKlass(byte[] bytes, Symbol<Type> typeOrNull, ClassDefinitionInfo info) {
         // May throw guest ClassFormatError, NoClassDefFoundError.
-        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), getClassLoader(), typeOrNull, context, info);
+        ParserKlass parserKlass = context.getLanguageCache().getOrCreateParserKlass(getClassLoader(), typeOrNull, bytes, context, info);
         Meta meta = getMeta();
         if (!loaderIsBootOrPlatform(getClassLoader(), meta) && parserKlass.getName().toString().startsWith("java/")) {
             throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException, "Define class in prohibited package name: " + parserKlass.getName());
@@ -449,9 +462,9 @@ public abstract class ClassRegistry implements ContextAccess {
         ObjectKlass klass;
 
         try (DebugCloseable define = KLASS_DEFINE.scope(context.getTimers())) {
-            // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
             ContextDescription description = new ContextDescription(context.getLanguage(), context.getJavaVersion());
-            LinkedKlass linkedKlass = LinkedKlass.create(description, parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
+            LinkedKlass linkedSuperKlass = superKlass == null ? null : superKlass.getLinkedKlass();
+            LinkedKlass linkedKlass = context.getLanguageCache().getOrCreateLinkedKlass(context.getLanguageCacheEnv(), description, parserKlass, linkedSuperKlass, linkedInterfaces, info);
             klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader(), info);
         }
 
