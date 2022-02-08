@@ -387,9 +387,6 @@ public class FeatureImpl {
             return registerAsUnsafeAccessed(aField, DefaultUnsafePartition.get());
         }
 
-        public void registerAsUnsafeAccessed(Field field, UnsafePartitionKind partitionKind) {
-            registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field), partitionKind);
-        }
 
         public boolean registerAsUnsafeAccessed(AnalysisField aField, UnsafePartitionKind partitionKind) {
             if (!aField.isUnsafeAccessed()) {
@@ -400,8 +397,10 @@ public class FeatureImpl {
                 /* Force the update of registered unsafe loads and stores. */
                 bb.forceUnsafeUpdate(aField);
                 bb.markFieldUnsafeAccessed(aField);
+                bb.registerAsUnsafeAccessed(aField, partitionKind);
                 return true;
             }
+            bb.registerAsUnsafeAccessed(aField, partitionKind);
             return false;
         }
 
@@ -419,24 +418,6 @@ public class FeatureImpl {
 
         public void registerAsUnsafeAccessed(Field field, UnsafePartitionKind partitionKind) {
             registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field), partitionKind);
-        }
-
-        public void registerAsUnsafeAccessed(AnalysisField aField, UnsafePartitionKind partitionKind) {
-            if (!aField.isUnsafeAccessed()) {
-                /* Register the field as unsafe accessed. */
-                aField.registerAsAccessed();
-                aField.registerAsUnsafeAccessed(partitionKind);
-                /* Force the update of registered unsafe loads and stores. */
-                bb.forceUnsafeUpdate(aField);
-            }
-            bb.registerAsUnsafeAccessed(aField, partitionKind);
-// if (!aField.isUnsafeAccessed()) {
-// /* Register the field as unsafe accessed. */
-// aField.registerAsAccessed();
-// aField.registerAsUnsafeAccessed(bb.getUniverse(), partitionKind);
-// /* Force the update of registered unsafe loads and stores. */
-// bb.forceUnsafeUpdate(aField);
-// }
         }
 
         public void registerAsInvoked(Executable method) {

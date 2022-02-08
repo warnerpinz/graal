@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.analysis;
 
-import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -32,33 +31,19 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.reachability.MethodSummaryProvider;
 import com.oracle.graal.reachability.ReachabilityAnalysis;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.UnknownObjectField;
-import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.word.WordBase;
 
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
-
-import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
 public class NativeImageReachabilityAnalysis extends ReachabilityAnalysis implements Inflation {
 
-    private Set<AnalysisField> handledUnknownValueFields = ConcurrentHashMap.newKeySet();
     private final AnnotationSubstitutionProcessor annotationSubstitutionProcessor;
     private final DynamicHubInitializer dynamicHubInitializer;
     private final boolean strengthenGraalGraphs;
+    private final UnknownFieldHandler unknownFieldHandler;
 
     public NativeImageReachabilityAnalysis(OptionValues options, AnalysisUniverse universe, HostedProviders providers, AnnotationSubstitutionProcessor annotationSubstitutionProcessor,
                     ForkJoinPool executor,
@@ -67,6 +52,15 @@ public class NativeImageReachabilityAnalysis extends ReachabilityAnalysis implem
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
         this.strengthenGraalGraphs = SubstrateOptions.parseOnce();
         this.dynamicHubInitializer = new DynamicHubInitializer(metaAccess, unsupportedFeatures, providers.getConstantReflection());
+        this.unknownFieldHandler = new UnknownFieldHandler(this, metaAccess) {
+            @Override
+            protected void handleUnknownObjectField(AnalysisField aField, AnalysisType... declaredTypes) {
+                markFieldAccessed(aField);
+                for (AnalysisType declaredType : declaredTypes) {
+                    markTypeReachable(declaredType);
+                }
+            }
+        };
     }
 
     @Override
@@ -80,9 +74,19 @@ public class NativeImageReachabilityAnalysis extends ReachabilityAnalysis implem
     }
 
     @Override
+    public void onFieldAccessed(AnalysisField field) {
+        unknownFieldHandler.handleUnknownObjectField(field);
+    }
+
+    @Override
+    public void onTypeInitialized(AnalysisType type) {
+        postTask(debug -> initializeMetaData(type));
+    }
+
+    @Override
     public void cleanupAfterAnalysis() {
         super.cleanupAfterAnalysis();
-        handledUnknownValueFields = null;
+        unknownFieldHandler.cleanupAfterAnalysis();
     }
 
     @Override
@@ -104,101 +108,4 @@ public class NativeImageReachabilityAnalysis extends ReachabilityAnalysis implem
     public void initializeMetaData(AnalysisType type) {
         dynamicHubInitializer.initializeMetaData(universe.getHeapScanner(), type);
     }
-
-    private void scanHub(ObjectScanner objectScanner, AnalysisType type) {
-        SVMHost svmHost = (SVMHost) hostVM;
-        JavaConstant hubConstant = SubstrateObjectConstant.forObject(svmHost.dynamicHub(type));
-        objectScanner.scanConstant(hubConstant, ObjectScanner.OtherReason.HUB);
-    }
-
-    private void handleUnknownValueField(AnalysisField field) {
-        if (handledUnknownValueFields.contains(field)) {
-            return;
-        }
-        if (!field.isAccessed()) {
-            /*
-             * Field is not reachable yet, so do no process it. In particular, we must not register
-             * types listed in the @UnknownObjectField annotation as allocated when the field is not
-             * yet reachable
-             */
-            return;
-        }
-
-        UnknownObjectField unknownObjectField = field.getAnnotation(UnknownObjectField.class);
-        UnknownPrimitiveField unknownPrimitiveField = field.getAnnotation(UnknownPrimitiveField.class);
-        if (unknownObjectField != null) {
-            assert !Modifier.isFinal(field.getModifiers()) : "@UnknownObjectField annotated field " + field.format("%H.%n") + " cannot be final";
-            assert field.getJavaKind() == JavaKind.Object;
-
-            field.setCanBeNull(unknownObjectField.canBeNull());
-
-            List<AnalysisType> aAnnotationTypes = extractAnnotationTypes(field, unknownObjectField);
-
-            for (AnalysisType type : aAnnotationTypes) {
-                type.registerAsAllocated(null);
-            }
-
-            /*
-             * Use the annotation types, instead of the declared type, in the UnknownObjectField
-             * annotated fields initialization.
-             */
-            handleUnknownObjectField(field, aAnnotationTypes.toArray(new AnalysisType[0]));
-
-        } else if (unknownPrimitiveField != null) {
-            assert !Modifier.isFinal(field.getModifiers()) : "@UnknownPrimitiveField annotated field " + field.format("%H.%n") + " cannot be final";
-            /*
-             * Register a primitive field as containing unknown values(s), i.e., is usually written
-             * only in hosted code.
-             */
-
-            field.registerAsWritten(null);
-        }
-
-        handledUnknownValueFields.add(field);
-    }
-
-    private List<AnalysisType> extractAnnotationTypes(AnalysisField field, UnknownObjectField unknownObjectField) {
-        List<Class<?>> annotationTypes = new ArrayList<>(Arrays.asList(unknownObjectField.types()));
-        for (String annotationTypeName : unknownObjectField.fullyQualifiedTypes()) {
-            try {
-                Class<?> annotationType = Class.forName(annotationTypeName);
-                annotationTypes.add(annotationType);
-            } catch (ClassNotFoundException e) {
-                throw shouldNotReachHere("Annotation type not found " + annotationTypeName);
-            }
-        }
-
-        List<AnalysisType> aAnnotationTypes = new ArrayList<>();
-        AnalysisType declaredType = field.getType();
-
-        for (Class<?> annotationType : annotationTypes) {
-            AnalysisType aAnnotationType = metaAccess.lookupJavaType(annotationType);
-
-            assert !WordBase.class.isAssignableFrom(annotationType) : "Annotation type must not be a subtype of WordBase: field: " + field + " | declared type: " + declaredType +
-                            " | annotation type: " + annotationType;
-            assert declaredType.isAssignableFrom(aAnnotationType) : "Annotation type must be a subtype of the declared type: field: " + field + " | declared type: " + declaredType +
-                            " | annotation type: " + annotationType;
-            assert aAnnotationType.isArray() || (aAnnotationType.isInstanceClass() && !Modifier.isAbstract(aAnnotationType.getModifiers())) : "Annotation type failure: field: " + field +
-                            " | annotation type " + aAnnotationType;
-
-            aAnnotationTypes.add(aAnnotationType);
-        }
-        return aAnnotationTypes;
-    }
-
-    /**
-     * Register a field as containing unknown object(s), i.e., is usually written only in hosted
-     * code. It can have multiple declared types provided via annotation.
-     */
-    private void handleUnknownObjectField(AnalysisField aField, AnalysisType... declaredTypes) {
-        assert aField.getJavaKind() == JavaKind.Object;
-
-        aField.registerAsWritten(null);
-
-        /* Link the field with all declared types. */
-        for (AnalysisType fieldDeclaredType : declaredTypes) {
-            markTypeReachable(fieldDeclaredType);
-        }
-    }
-
 }
