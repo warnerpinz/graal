@@ -148,6 +148,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
             try (Timer.StopTimer t = summaryTimer.start()) {
                 summary = methodSummaryProvider.getSummary(this, method);
             }
+            // System.out.println("\t##" + method + " : " + summary);
             processSummary(method, summary);
             summaries.put(method, summary);
         } catch (Throwable ex) {
@@ -359,9 +360,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
     @SuppressWarnings("try")
     private void runReachability() throws InterruptedException {
         try (Timer.StopTimer t = reachabilityTimer.start()) {
-            if (!executor.isStarted()) {
-                executor.start();
-            }
+            executor.start();
             executor.complete();
             executor.shutdown();
             executor.init(timing);

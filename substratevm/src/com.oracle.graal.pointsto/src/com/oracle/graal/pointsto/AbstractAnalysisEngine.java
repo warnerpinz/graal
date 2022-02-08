@@ -107,6 +107,11 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         universe.getTypes().forEach(AnalysisType::cleanupAfterAnalysis);
         universe.getFields().forEach(AnalysisField::cleanupAfterAnalysis);
         universe.getMethods().forEach(AnalysisMethod::cleanupAfterAnalysis);
+
+        PointsToAnalysis.ConstantObjectsProfiler.constantTypes.clear();
+
+        universe.getHeapScanner().cleanupAfterAnalysis();
+        universe.getHeapVerifier().cleanupAfterAnalysis();
     }
 
     @Override

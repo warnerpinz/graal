@@ -32,7 +32,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import jdk.vm.ci.meta.JavaConstant;
 
-// todo resolve return values
+
 public class ReachabilityObjectScanner implements ObjectScanningObserver {
 
     private final ReachabilityAnalysis bb;
