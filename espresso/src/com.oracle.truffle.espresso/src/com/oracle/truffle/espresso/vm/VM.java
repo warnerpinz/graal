@@ -60,6 +60,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionValues;
 
@@ -1885,12 +1886,13 @@ public final class VM extends NativeEnv implements ContextAccess {
         Symbol<Type> type = namePtrToInternal(namePtr); // can be null
         StaticObject loader = lookup.getMirrorKlass().getDefiningClassLoader();
 
+        ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(getContext());
         ObjectKlass k;
         if (isHidden) {
             // Special handling
-            k = getRegistries().defineKlass(type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd, nest, classData, isStrong));
+            k = getRegistries().defineKlass(env, type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd, nest, classData, isStrong));
         } else {
-            k = getRegistries().defineKlass(type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd));
+            k = getRegistries().defineKlass(env, type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd));
         }
 
         if (initialize) {
@@ -1913,7 +1915,8 @@ public final class VM extends NativeEnv implements ContextAccess {
 
         Symbol<Type> type = namePtrToInternal(namePtr); // can be null
 
-        StaticObject clazz = getContext().getRegistries().defineKlass(type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd)).mirror();
+        ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(getContext());
+        StaticObject clazz = getContext().getRegistries().defineKlass(env, type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd)).mirror();
         assert clazz != null;
         return clazz;
     }
@@ -1928,8 +1931,9 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl(isJni = true)
     public @JavaType(Class.class) StaticObject JVM_FindLoadedClass(@JavaType(ClassLoader.class) StaticObject loader, @JavaType(String.class) StaticObject name) {
         Symbol<Type> type = getTypes().fromClassGetName(getMeta().toHostString(name));
+        ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(getContext());
         // HotSpot skips reflection (DelegatingClassLoader) class loaders.
-        Klass klass = getRegistries().findLoadedClass(type, nonReflectionClassLoader(loader));
+        Klass klass = getRegistries().findLoadedClass(env, type, nonReflectionClassLoader(loader));
         if (klass == null) {
             return StaticObject.NULL;
         }
@@ -3297,7 +3301,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         PackageTable packageTable = registry.packages();
         ModuleTable moduleTable = registry.modules();
         assert moduleTable != null && packageTable != null;
-        boolean loaderIsBootOrPlatform = ClassRegistry.loaderIsBootOrPlatform(loader, meta);
+        ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(getContext());
+        boolean loaderIsBootOrPlatform = env.isLoaderBootOrPlatform(loader);
 
         ArrayList<Symbol<Name>> pkgSymbols = new ArrayList<>();
         try (EntryTable.BlockLock block = packageTable.write()) {
