@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.classfile.Constants;
-import com.oracle.truffle.espresso.classfile.LinkedClassfileParser;
+import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
@@ -266,7 +266,7 @@ public abstract class ClassRegistry {
     public ParserKlass createParserKlass(ClassLoadingEnv env, byte[] bytes, Symbol<Type> typeOrNull, ClassRegistry.ClassDefinitionInfo info)
             throws EspressoClassLoadingException.SecurityException {
         // TODO (ivan-ristovic): Consult cache first
-        ParserKlass parserKlass = LinkedClassfileParser.parse(env, new ClassfileStream(bytes, null), getClassLoader(), typeOrNull, info);
+        ParserKlass parserKlass = ClassfileParser.parse(env, new ClassfileStream(bytes, null), getClassLoader(), typeOrNull, info);
         // May throw guest ClassFormatError, NoClassDefFoundError.
         if (!env.isLoaderBootOrPlatform(getClassLoader()) && parserKlass.getName().toString().startsWith("java/")) {
             throw EspressoClassLoadingException.securityException("Define class in prohibited package name: " + parserKlass.getName());
