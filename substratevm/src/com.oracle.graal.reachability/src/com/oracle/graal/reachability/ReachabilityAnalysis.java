@@ -150,6 +150,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
             }
             // System.out.println("\t##" + method + " : " + summary);
             processSummary(method, summary);
+            ((ReachabilityAnalysisMethod) method).setSummary(summary);
             summaries.put(method, summary);
         } catch (Throwable ex) {
             System.err.println("Failed to provide a summary for " + method.format("%H.%n(%p)"));

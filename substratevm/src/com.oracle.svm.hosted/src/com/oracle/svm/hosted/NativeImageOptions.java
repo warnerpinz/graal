@@ -190,7 +190,7 @@ public class NativeImageOptions {
     public static final HostedOptionKey<Boolean> UnsafeOffsetWarningsAreFatal = new HostedOptionKey<>(false);
 
     @Option(help = "Show exception stack traces for exceptions during image building.)")//
-    public static final HostedOptionKey<Boolean> ReportExceptionStackTraces = new HostedOptionKey<>(areAssertionsEnabled());
+    public static final HostedOptionKey<Boolean> ReportExceptionStackTraces = new HostedOptionKey<>(true);
 
     @Option(help = "Maximum number of types allowed in the image. Used for tests where small number of types is necessary.", type = Debug)//
     public static final HostedOptionKey<Integer> MaxReachableTypes = new HostedOptionKey<>(-1);

@@ -62,10 +62,13 @@ import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.meta.AnalysisFactory;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.reachability.MethodSummary;
+import com.oracle.graal.reachability.MethodSummaryProvider;
+import com.oracle.graal.reachability.ReachabilityAnalysisFactory;
 import com.oracle.graal.reachability.ReachabilityObjectScanner;
 import com.oracle.graal.reachability.SimpleInMemoryMethodSummaryProvider;
 import com.oracle.graal.reachability.summaries.MethodSummaryStorage;
@@ -1114,8 +1117,14 @@ public class NativeImageGenerator {
         automaticSubstitutions.init(loader, originalMetaAccess);
         AnalysisPolicy analysisPolicy = PointstoOptions.AllocationSiteSensitiveHeap.getValue(options) ? new BytecodeSensitiveAnalysisPolicy(options)
                         : new DefaultAnalysisPolicy(options);
+        AnalysisFactory analysisFactory;
+        if (UseExperimentalReachabilityAnalysis.getValue()) {
+            analysisFactory = new ReachabilityAnalysisFactory();
+        } else {
+            analysisFactory = new PointsToAnalysisFactory();
+        }
         return new AnalysisUniverse(hostVM, target.wordJavaKind, analysisPolicy, aSubstitutions, originalMetaAccess, originalSnippetReflection,
-                        new SubstrateSnippetReflectionProvider(new SubstrateWordTypes(originalMetaAccess, FrameAccess.getWordKind())), new PointsToAnalysisFactory());
+                        new SubstrateSnippetReflectionProvider(new SubstrateWordTypes(originalMetaAccess, FrameAccess.getWordKind())), analysisFactory);
     }
 
     public static AnnotationSubstitutionProcessor createAnnotationSubstitutionProcessor(MetaAccessProvider originalMetaAccess, ImageClassLoader loader,
@@ -1263,6 +1272,7 @@ public class NativeImageGenerator {
                             aMetaAccess));
             methodSummaryStorage = new MethodSummaryStorage(new ResolutionStrategyImpl(loader, aMetaAccess), simpleInMemoryMethodSummaryProvider, options);
             methodSummaryStorage.loadData();
+            ImageSingletons.add(MethodSummaryProvider.class, simpleInMemoryMethodSummaryProvider);
             return new NativeImageReachabilityAnalysis(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback,
                             methodSummaryStorage);
         }
