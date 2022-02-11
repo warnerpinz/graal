@@ -31,6 +31,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import jdk.vm.ci.meta.JavaConstant;
@@ -98,12 +99,12 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
         // to preserve the graphs for compilation
         method.setAnalyzedGraph(decoded);
 
-        return new Instance().createSummaryFromGraph(decoded);
+        return new Instance().createSummaryFromGraph(decoded, method);
     }
 
     @Override
     public MethodSummary getSummary(BigBang bigBang, StructuredGraph graph) {
-        return new Instance().createSummaryFromGraph(graph);
+        return new Instance().createSummaryFromGraph(graph, null);
     }
 
     @SuppressWarnings("unused")
@@ -133,7 +134,8 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
         public final List<ForeignCallDescriptor> foreignCallDescriptors = new ArrayList<>();
         public final List<ForeignCallSignature> foreignCallSignatures = new ArrayList<>();
 
-        private MethodSummary createSummaryFromGraph(StructuredGraph graph) {
+        private MethodSummary createSummaryFromGraph(StructuredGraph graph, AnalysisMethod aMethod) {
+            List<InvokeInfo> invokeInfos = aMethod != null ? new ArrayList<>() : null;
             for (Node n : graph.getNodes()) {
                 if (n instanceof NewInstanceNode) {
                     NewInstanceNode node = (NewInstanceNode) n;
@@ -190,6 +192,9 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                     if (targetMethod == null) {
                         continue;
                     }
+                    if (invokeInfos != null) {
+                        invokeInfos.add(new ReachabilityInvokeInfo(targetMethod, node.asFixedNode().getNodeSourcePosition(), kind.isDirect()));
+                    }
                     if (kind.isDirect()) {
                         implementationInvokedMethods.add(targetMethod);
                     } else {
@@ -219,6 +224,11 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                 }
                 delegateNodeProcessing(this, n);
             }
+
+            if (invokeInfos != null) {
+                ((ReachabilityAnalysisMethod) aMethod).addInvokes(invokeInfos);
+            }
+
             return new MethodSummary(invokedMethods.toArray(new AnalysisMethod[0]), implementationInvokedMethods.toArray(new AnalysisMethod[0]),
                             accessedTypes.toArray(new AnalysisType[0]),
                             instantiatedTypes.toArray(new AnalysisType[0]), readFields.toArray(new AnalysisField[0]), writtenFields.toArray(new AnalysisField[0]),
