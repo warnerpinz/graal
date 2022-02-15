@@ -61,6 +61,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntFunction;
 
 import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
+import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionValues;
 
@@ -1888,11 +1889,15 @@ public final class VM extends NativeEnv implements ContextAccess {
 
         ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(getContext());
         ObjectKlass k;
-        if (isHidden) {
-            // Special handling
-            k = getRegistries().defineKlass(env, type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd, nest, classData, isStrong));
-        } else {
-            k = getRegistries().defineKlass(env, type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd));
+        try {
+            if (isHidden) {
+                // Special handling
+                k = getRegistries().defineKlass(env, type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd, nest, classData, isStrong));
+            } else {
+                k = getRegistries().defineKlass(env, type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd));
+            }
+        } catch (EspressoClassLoadingException e) {
+            throw e.asGuestException(env.getMeta());
         }
 
         if (initialize) {
@@ -1916,7 +1921,12 @@ public final class VM extends NativeEnv implements ContextAccess {
         Symbol<Type> type = namePtrToInternal(namePtr); // can be null
 
         ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(getContext());
-        StaticObject clazz = getContext().getRegistries().defineKlass(env, type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd)).mirror();
+        StaticObject clazz;
+        try {
+            clazz = getContext().getRegistries().defineKlass(env, type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd)).mirror();
+        } catch (EspressoClassLoadingException e) {
+            throw e.asGuestException(env.getMeta());
+        }
         assert clazz != null;
         return clazz;
     }
