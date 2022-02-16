@@ -51,7 +51,7 @@ public class NativeImageReachabilityAnalysis extends ReachabilityAnalysis implem
         super(options, universe, providers, universe.hostVM(), executor, heartbeatCallback, new SubstrateUnsupportedFeatures(), methodSummaryProvider);
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
         this.strengthenGraalGraphs = SubstrateOptions.parseOnce();
-        this.dynamicHubInitializer = new DynamicHubInitializer(metaAccess, unsupportedFeatures, providers.getConstantReflection());
+        this.dynamicHubInitializer = new DynamicHubInitializer(this);
         this.unknownFieldHandler = new UnknownFieldHandler(this, metaAccess) {
             @Override
             protected void handleUnknownObjectField(AnalysisField aField, AnalysisType... declaredTypes) {
