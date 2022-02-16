@@ -113,8 +113,6 @@ public interface ReachabilityAnalysis {
         markFieldAccessed(field);
     }
 
-    void markMethodImplementationInvoked(AnalysisMethod method, Object reason);
-
     /**
      * Waits until the analysis is done.
      */

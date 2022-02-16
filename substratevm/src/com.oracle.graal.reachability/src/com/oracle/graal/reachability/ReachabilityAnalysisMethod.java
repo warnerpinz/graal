@@ -30,6 +30,7 @@ import com.oracle.graal.pointsto.meta.InvokeInfo;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -44,6 +45,23 @@ public class ReachabilityAnalysisMethod extends AnalysisMethod {
     public ReachabilityAnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped) {
         super(universe, wrapped);
         this.universe = universe;
+        registerSignatureTypes();
+    }
+
+    private void registerSignatureTypes() {
+        // todo this is a copy from MethodFlowsGraphs, line 93
+        boolean isStatic = Modifier.isStatic(getModifiers());
+        int parameterCount = getSignature().getParameterCount(!isStatic);
+        // lookup the parameters type so that they are added to the universe even if the method is
+        // never linked and parsed
+        int offset = isStatic ? 0 : 1;
+        for (int i = offset; i < parameterCount; i++) {
+            getSignature().getParameterType(i - offset, getDeclaringClass());
+        }
+
+        // lookup the return type so that it is added to the universe even if the method is
+        // never linked and parsed
+        getSignature().getReturnType(getDeclaringClass());
     }
 
     @Override

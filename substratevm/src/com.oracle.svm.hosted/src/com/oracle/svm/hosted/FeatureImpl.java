@@ -427,7 +427,6 @@ public class FeatureImpl {
         public void registerAsInvoked(AnalysisMethod aMethod) {
 // bb.addRootMethod(aMethod).registerAsImplementationInvoked(null);
             bb.addRootMethod(aMethod);
-            bb.markMethodImplementationInvoked(aMethod, null);
         }
 
         public void registerAsCompiled(Executable method) {

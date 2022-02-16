@@ -32,7 +32,6 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.Collection;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -102,7 +101,7 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
      */
     protected AnalysisMethod[] implementations;
 
-    private Object reason;
+    private Reason reason;
 
     public AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped) {
         this.wrapped = wrapped;
@@ -623,17 +622,11 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
         this.analyzedGraph = analyzedGraph;
     }
 
-    public void setReason(Object reason) {
+    public void setReason(Reason reason) {
         this.reason = reason;
     }
 
-    public String getReason() {
-        if (reason == null) {
-            return "no reason - it just happened :O";
-        }
-        if (reason instanceof StackTraceElement[]) {
-            return Arrays.toString(((StackTraceElement[]) reason));
-        }
-        return reason.toString();
+    public Reason getReason() {
+        return reason;
     }
 }

@@ -159,7 +159,7 @@ public abstract class ImageHeapScanner {
         if (universe.sealed() && !type.isReachable()) {
             throw AnalysisError.shouldNotReachHere("Universe is sealed. New type reachable: " + type.toJavaName());
         }
-        type.registerAsInHeap();
+        universe.getBigbang().markTypeInHeap(type);
     }
 
     JavaConstant markConstantReachable(JavaConstant constant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {

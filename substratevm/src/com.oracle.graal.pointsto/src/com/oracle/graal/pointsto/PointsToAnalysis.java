@@ -627,11 +627,6 @@ public abstract class PointsToAnalysis implements BigBang {
         field.registerAsAccessed();
     }
 
-    @Override
-    public void markMethodImplementationInvoked(AnalysisMethod method, Object reason) {
-        addRootMethod(method).registerAsImplementationInvoked();
-
-    }
 
     @SuppressWarnings("try")
     public boolean doTypeflow() throws InterruptedException {
