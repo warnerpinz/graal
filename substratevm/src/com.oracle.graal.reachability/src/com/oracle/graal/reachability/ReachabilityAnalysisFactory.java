@@ -25,13 +25,32 @@
 package com.oracle.graal.reachability;
 
 import com.oracle.graal.pointsto.meta.AnalysisFactory;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisType;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class ReachabilityAnalysisFactory implements AnalysisFactory {
     @Override
     public AnalysisMethod createMethod(AnalysisUniverse universe, ResolvedJavaMethod method) {
         return new ReachabilityAnalysisMethod(universe, method);
+    }
+
+    @Override
+    public AnalysisField createField(AnalysisUniverse universe, ResolvedJavaField field) {
+        // todo provide correct subtype
+        return new PointsToAnalysisField(universe, field);
+    }
+
+    @Override
+    public AnalysisType createType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
+        // todo provide correct subtype
+        return new PointsToAnalysisType(universe, javaType, storageKind, objectType, cloneableType);
     }
 }

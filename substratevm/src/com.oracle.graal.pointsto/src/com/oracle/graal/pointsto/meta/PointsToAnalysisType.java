@@ -50,7 +50,7 @@ public class PointsToAnalysisType extends AnalysisType {
      */
     private final AtomicReference<StoreIndexedTypeFlow> contextInsensitiveIndexedStore = new AtomicReference<>();
 
-    PointsToAnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
+    public PointsToAnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
         super(universe, javaType, storageKind, objectType, cloneableType);
     }
 

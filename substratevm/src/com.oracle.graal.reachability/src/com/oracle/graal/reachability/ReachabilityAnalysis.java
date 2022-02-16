@@ -152,7 +152,6 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
 
     @SuppressWarnings("try")
     private void onMethodImplementationInvoked(AnalysisMethod m) {
-        System.out.println("===" + m.getQualifiedName());
         markMethodSignatureReachable(m);
         ReachabilityAnalysisMethod method = assertReachabilityAnalysisMethod(m);
         try {
