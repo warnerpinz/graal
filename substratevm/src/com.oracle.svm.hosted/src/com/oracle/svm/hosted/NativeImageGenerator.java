@@ -1184,17 +1184,17 @@ public class NativeImageGenerator {
          * good example.
          */
         try (Indent ignored = debug.logAndIndent("add initial classes/fields/methods")) {
-            bb.addRootClass(Object.class, false, false).registerAsInHeap();
+            bb.markTypeInHeap(bb.addRootClass(Object.class, false, false));
             bb.addRootField(DynamicHub.class, "vtable");
-            bb.addRootClass(String.class, false, false).registerAsInHeap();
-            bb.addRootClass(String[].class, false, false).registerAsInHeap();
-            bb.addRootField(String.class, "value").registerAsInHeap();
-            bb.addRootClass(long[].class, false, false).registerAsInHeap();
-            bb.addRootClass(byte[].class, false, false).registerAsInHeap();
-            bb.addRootClass(byte[][].class, false, false).registerAsInHeap();
-            bb.addRootClass(Object[].class, false, false).registerAsInHeap();
-            bb.addRootClass(CFunctionPointer[].class, false, false).registerAsInHeap();
-            bb.addRootClass(PointerBase[].class, false, false).registerAsInHeap();
+            bb.markTypeInHeap(bb.addRootClass(String.class, false, false));
+            bb.markTypeInHeap(bb.addRootClass(String[].class, false, false));
+            bb.markTypeInHeap(bb.addRootField(String.class, "value"));
+            bb.markTypeInHeap(bb.addRootClass(long[].class, false, false));
+            bb.markTypeInHeap(bb.addRootClass(byte[].class, false, false));
+            bb.markTypeInHeap(bb.addRootClass(byte[][].class, false, false));
+            bb.markTypeInHeap(bb.addRootClass(Object[].class, false, false));
+            bb.markTypeInHeap(bb.addRootClass(CFunctionPointer[].class, false, false));
+            bb.markTypeInHeap(bb.addRootClass(PointerBase[].class, false, false));
 
             bb.addRootMethod(ReflectionUtil.lookupMethod(SubstrateArraycopySnippets.class, "doArraycopy", Object.class, int.class, Object.class, int.class, int.class), true);
             bb.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true);

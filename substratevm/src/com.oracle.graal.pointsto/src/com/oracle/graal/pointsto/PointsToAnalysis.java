@@ -690,6 +690,11 @@ public abstract class PointsToAnalysis implements BigBang {
     }
 
     @Override
+    public boolean markTypeInstantiated(AnalysisType type) {
+        return type.registerAsAllocated(null);
+    }
+
+    @Override
     public void markTypeInHeap(AnalysisType type) {
         type.registerAsInHeap();
     }
@@ -698,7 +703,6 @@ public abstract class PointsToAnalysis implements BigBang {
     public void markFieldAccessed(AnalysisField field) {
         field.registerAsAccessed();
     }
-
 
     @SuppressWarnings("try")
     public boolean doTypeflow() throws InterruptedException {

@@ -241,6 +241,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         type.registerAsInHeap();
     }
 
+    @Override
     public boolean markTypeInstantiated(AnalysisType type) {
         if (!type.registerAsAllocated(null)) {
             return false;
