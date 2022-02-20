@@ -88,8 +88,7 @@ public class ReachabilityObjectScanner implements ObjectScanningObserver {
     @Override
     public void forScannedConstant(JavaConstant scannedValue, ObjectScanner.ScanReason reason) {
         AnalysisType type = constantType(scannedValue);
-        bb.markTypeInstantiated(type);
-        type.registerAsInHeap();
+        bb.markTypeInHeap(type);
     }
 
     private AnalysisType constantType(JavaConstant constant) {

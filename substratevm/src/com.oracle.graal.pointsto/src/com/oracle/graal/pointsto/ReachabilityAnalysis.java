@@ -75,6 +75,8 @@ public interface ReachabilityAnalysis {
 
     boolean markTypeReachable(AnalysisType type);
 
+    boolean markTypeInstantiated(AnalysisType type);
+
     void markTypeInHeap(AnalysisType type);
 
     void markFieldAccessed(AnalysisField field);
