@@ -76,7 +76,7 @@ public class NativeImageReachabilityAnalysis extends ReachabilityAnalysis implem
 
     @Override
     public void onFieldAccessed(AnalysisField field) {
-        unknownFieldHandler.handleUnknownObjectField(field);
+        unknownFieldHandler.handleUnknownValueField(field);
     }
 
     @Override
