@@ -40,6 +40,7 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.Timer;
+import com.oracle.graal.pointsto.util.TimerCollection;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -74,11 +75,11 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
     private final Timer summaryTimer;
 
     public ReachabilityAnalysis(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
-                    UnsupportedFeatures unsupportedFeatures, MethodSummaryProvider methodSummaryProvider) {
-        super(options, universe, providers, hostVM, executorService, heartbeatCallback, unsupportedFeatures);
+                    UnsupportedFeatures unsupportedFeatures, MethodSummaryProvider methodSummaryProvider, TimerCollection timerCollection) {
+        super(options, universe, providers, hostVM, executorService, heartbeatCallback, unsupportedFeatures, timerCollection);
         this.methodSummaryProvider = methodSummaryProvider;
         this.objectType = metaAccess.lookupJavaType(Object.class);
-        this.summaryTimer = new Timer(hostVM.getImageName(), "((summaries))", false);
+        this.summaryTimer = timerCollection.createTimer("((summaries))", false);
     }
 
     @SuppressWarnings("try")
@@ -379,7 +380,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
     private boolean analysisModified() throws InterruptedException {
         boolean analysisModified;
         // todo rename timer
-        try (Timer.StopTimer ignored = checkObjectsTimer.start()) {
+        try (Timer.StopTimer ignored = verifyHeapTimer.start()) {
             analysisModified = universe.getHeapVerifier().requireAnalysisIteration(executor);
         }
         /* Initialize for the next iteration. */

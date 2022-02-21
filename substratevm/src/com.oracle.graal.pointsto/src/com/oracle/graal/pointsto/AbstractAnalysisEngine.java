@@ -36,6 +36,7 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.reports.StatisticsPrinter;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.Timer;
+import com.oracle.graal.pointsto.util.TimerCollection;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
@@ -54,7 +55,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     private final Boolean extendedAsserts;
     private final Timer processFeaturesTimer;
     private final Timer analysisTimer;
-    protected final Timer checkObjectsTimer;
+    protected final Timer verifyHeapTimer;
     protected final Timer reachabilityTimer;
     protected final AnalysisMetaAccess metaAccess;
     private final HostedProviders providers;
@@ -72,7 +73,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     protected final AnalysisTiming timing;
 
     public AbstractAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
-                    UnsupportedFeatures unsupportedFeatures) {
+                    UnsupportedFeatures unsupportedFeatures, TimerCollection timerCollection) {
         this.options = options;
         this.universe = universe;
         this.debugHandlerFactories = Collections.singletonList(new GraalDebugHandlersFactory(providers.getSnippetReflection()));
@@ -89,11 +90,10 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         this.unsupportedFeatures = unsupportedFeatures;
         this.replacements = providers.getReplacements();
 
-        String imageName = hostVM.getImageName();
-        this.processFeaturesTimer = new Timer(imageName, "(features)", false);
-        this.checkObjectsTimer = new Timer(imageName, "(objects)", false);
-        this.reachabilityTimer = new Timer(imageName, "(reachability)", false);
-        this.analysisTimer = new Timer(imageName, "analysis", true);
+        this.processFeaturesTimer = timerCollection.get(TimerCollection.Registry.FEATURES);
+        this.verifyHeapTimer = timerCollection.get(TimerCollection.Registry.VERIFY_HEAP);
+        this.reachabilityTimer = timerCollection.createTimer("(reachability)", false);
+        this.analysisTimer = timerCollection.get(TimerCollection.Registry.ANALYSIS);
 
         this.extendedAsserts = PointstoOptions.ExtendedAsserts.getValue(options);
 
@@ -115,19 +115,9 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     }
 
     @Override
-    public Timer getAnalysisTimer() {
-        return analysisTimer;
-    }
-
-    @Override
-    public Timer getProcessFeaturesTimer() {
-        return processFeaturesTimer;
-    }
-
-    @Override
     public void printTimers() {
         reachabilityTimer.print();
-        checkObjectsTimer.print();
+        verifyHeapTimer.print();
         processFeaturesTimer.print();
     }
 

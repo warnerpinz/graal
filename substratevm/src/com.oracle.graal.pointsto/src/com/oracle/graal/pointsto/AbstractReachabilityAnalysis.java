@@ -30,6 +30,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.util.TimerCollection;
 import org.graalvm.compiler.options.OptionValues;
 
 import java.lang.reflect.Executable;
@@ -40,8 +41,8 @@ import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
 public abstract class AbstractReachabilityAnalysis extends AbstractAnalysisEngine {
     public AbstractReachabilityAnalysis(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
-                    UnsupportedFeatures unsupportedFeatures) {
-        super(options, universe, providers, hostVM, executorService, heartbeatCallback, unsupportedFeatures);
+                    UnsupportedFeatures unsupportedFeatures, TimerCollection timerCollection) {
+        super(options, universe, providers, hostVM, executorService, heartbeatCallback, unsupportedFeatures, timerCollection);
     }
 
     @Override

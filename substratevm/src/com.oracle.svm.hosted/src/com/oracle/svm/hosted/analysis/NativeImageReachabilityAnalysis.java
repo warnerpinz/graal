@@ -28,6 +28,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.graal.reachability.MethodSummaryProvider;
 import com.oracle.graal.reachability.ReachabilityAnalysis;
 import com.oracle.svm.core.SubstrateOptions;
@@ -47,8 +48,8 @@ public class NativeImageReachabilityAnalysis extends ReachabilityAnalysis implem
 
     public NativeImageReachabilityAnalysis(OptionValues options, AnalysisUniverse universe, HostedProviders providers, AnnotationSubstitutionProcessor annotationSubstitutionProcessor,
                     ForkJoinPool executor,
-                    Runnable heartbeatCallback, MethodSummaryProvider methodSummaryProvider) {
-        super(options, universe, providers, universe.hostVM(), executor, heartbeatCallback, new SubstrateUnsupportedFeatures(), methodSummaryProvider);
+                    Runnable heartbeatCallback, MethodSummaryProvider methodSummaryProvider, TimerCollection timerCollection) {
+        super(options, universe, providers, universe.hostVM(), executor, heartbeatCallback, new SubstrateUnsupportedFeatures(), methodSummaryProvider, timerCollection);
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
         this.strengthenGraalGraphs = SubstrateOptions.parseOnce();
         this.dynamicHubInitializer = new DynamicHubInitializer(this);
