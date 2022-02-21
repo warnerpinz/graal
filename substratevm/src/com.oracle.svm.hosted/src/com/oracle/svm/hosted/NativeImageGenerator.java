@@ -1129,7 +1129,7 @@ public class NativeImageGenerator {
             methodSummaryStorage.loadData();
             ImageSingletons.add(MethodSummaryProvider.class, simpleInMemoryMethodSummaryProvider);
             return new NativeImageReachabilityAnalysis(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback,
-                            methodSummaryStorage);
+                            methodSummaryStorage, ImageSingletons.lookup(TimerCollection.class));
         }
         return new NativeImagePointsToAnalysis(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback, new SubstrateUnsupportedFeatures(),
                         ImageSingletons.lookup(TimerCollection.class));
