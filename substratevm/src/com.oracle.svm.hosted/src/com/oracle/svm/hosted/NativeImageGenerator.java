@@ -30,7 +30,6 @@ import static org.graalvm.compiler.hotspot.JVMCIVersionCheck.OPEN_LABSJDK_RELEAS
 import static com.oracle.svm.hosted.NativeImageOptions.UseExperimentalReachabilityAnalysis;
 import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
 
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.ref.Reference;
@@ -48,7 +47,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -66,7 +64,6 @@ import com.oracle.graal.pointsto.meta.AnalysisFactory;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.reports.ReportUtils;
-import com.oracle.graal.reachability.MethodSummary;
 import com.oracle.graal.reachability.MethodSummaryProvider;
 import com.oracle.graal.reachability.ReachabilityAnalysisFactory;
 import com.oracle.graal.reachability.ReachabilityObjectScanner;
@@ -741,148 +738,6 @@ public class NativeImageGenerator {
         long invokedMethods = aUniverse.getMethods().stream().filter(AnalysisMethod::isInvoked).count();
         long implInvokedMethods = aUniverse.getMethods().stream().filter(AnalysisMethod::isImplementationInvoked).count();
         System.out.println("!!!!!" + bigbang + " types:" + instantiatedTypes + " / " + types + ", methods: " + invokedMethods + " / " + implInvokedMethods);
-    }
-
-    private static final String DUMP_FOLDER = "/Users/dkozak/tmp/hello-dir/stats/";
-    private static final String METHOD_FORMAT = "%H.%n(%P)";
-
-    private void dumpAnalysisStats() {
-        AnalysisUniverse universe = getBigbang().getUniverse();
-        List<String> reachableTypes = universe.getTypes().stream().filter(AnalysisType::isReachable).map(AnalysisType::getName).sorted().collect(Collectors.toList());
-        List<String> invokedMethods = universe.getMethods().stream().filter(AnalysisMethod::isInvoked).map(it -> it.format("%H.%n(%P)")).sorted().collect(Collectors.toList());
-        List<String> implInvokedMethods = universe.getMethods().stream().filter(AnalysisMethod::isImplementationInvoked).map(it -> it.format("%H.%n(%P)")).sorted().collect(Collectors.toList());
-        System.out.println("Reachable types " + reachableTypes.size());
-        System.out.println("Invoked methods " + invokedMethods.size());
-        System.out.println("Implementation invoked methods " + implInvokedMethods.size());
-
-        String prefix = analysisPrefix();
-
-        List<Pair<List<String>, String>> pairs = Arrays.asList(Pair.create(reachableTypes, "types"), Pair.create(invokedMethods, "invokedMethods"),
-                        Pair.create(implInvokedMethods, "implInvokedMethods"));
-
-        for (Pair<List<String>, String> pair : pairs) {
-            try (FileWriter writer = new FileWriter(DUMP_FOLDER + prefix + pair.getRight())) {
-                for (String line : pair.getLeft()) {
-                    writer.write(line);
-                    writer.write('\n');
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        try (FileWriter writer = new FileWriter(DUMP_FOLDER + prefix + "invokeStats")) {
-            List<AnalysisMethod> implInvoked = universe.getMethods().stream().filter(AnalysisMethod::isImplementationInvoked).collect(Collectors.toList());
-            for (AnalysisMethod method : implInvoked) {
-                writer.write(method.format(METHOD_FORMAT));
-                writer.write(',');
-                List<AnalysisMethod> callees = getCallees(method);
-                writer.write(Integer.toString(callees.size()));
-                writer.write('\n');
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private static String analysisPrefix() {
-        return NativeImageOptions.UseExperimentalReachabilityAnalysis.getValue() ? "reachability_" : "points-to_";
-    }
-
-    @SuppressWarnings("unused")
-    private static void dumpParseTree(CompileQueue compileQueue) {
-        String prefix = analysisPrefix();
-        List<Map.Entry<HostedMethod, List<HostedMethod>>> entries = CompileQueue.parseTree.entrySet().stream().sorted(Comparator.comparing(entry -> entry.getKey().format(METHOD_FORMAT)))
-                        .collect(Collectors.toList());
-        try (FileWriter writer = new FileWriter(DUMP_FOLDER + prefix + "parse_tree")) {
-            for (Map.Entry<HostedMethod, List<HostedMethod>> entry : entries) {
-                writer.write(entry.getKey().format(METHOD_FORMAT));
-                writer.write(',');
-                writer.write(Integer.toString(entry.getValue().size()));
-                writer.write('\n');
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private List<AnalysisMethod> getCallees(AnalysisMethod method) {
-        if (bb instanceof NativeImageReachabilityAnalysis) {
-            return getCalleesR(((NativeImageReachabilityAnalysis) bb), method);
-        } else if (bb instanceof NativeImagePointsToAnalysis) {
-            return getCalleesP((NativeImagePointsToAnalysis) bb, method);
-        }
-        throw VMError.shouldNotReachHere();
-    }
-
-    @SuppressWarnings("unused")
-    private static List<AnalysisMethod> getCalleesP(NativeImagePointsToAnalysis bb, AnalysisMethod method) {
-        return ((PointsToAnalysisMethod) method).getTypeFlow().getInvokes().stream().flatMap(it -> it.getCallees().stream()).collect(Collectors.toList());
-    }
-
-    private static List<AnalysisMethod> getCalleesR(NativeImageReachabilityAnalysis bb, AnalysisMethod method) {
-        MethodSummary summary = bb.summaries.get(method);
-        if (summary == null) {
-// System.err.println("Don't have a summary for " + method);
-            return Collections.emptyList();
-        }
-        List<AnalysisMethod> callees = new ArrayList<>();
-        Collections.addAll(callees, summary.implementationInvokedMethods);
-        for (AnalysisMethod invokedMethod : summary.invokedMethods) {
-            AnalysisType clazz = invokedMethod.getDeclaringClass();
-            for (AnalysisType subtype : clazz.getInstantiatedSubtypes()) {
-                AnalysisMethod resolved = subtype.resolveConcreteMethod(invokedMethod, clazz);
-                if (resolved != null) {
-                    callees.add(resolved);
-                }
-            }
-        }
-        return callees;
-    }
-
-    @SuppressWarnings("unused")
-    private static String dumpChain(AnalysisMethod method) {
-        ArrayList<String> methods = new ArrayList<>();
-        Set<String> seen = new HashSet<>();
-
-        boolean success = dfs(method, methods, seen);
-        StringBuilder builder = new StringBuilder();
-        if (!success) {
-            builder.append("Path is incomplete :X \n");
-        }
-        return serializePath(methods, builder);
-    }
-
-    private static String serializePath(ArrayList<String> methods, StringBuilder builder) {
-        for (int i = methods.size() - 1; i >= 0; i--) {
-            builder.append(methods.get(i));
-            if (i != 0) {
-                builder.append("->");
-            }
-        }
-        return builder.toString();
-    }
-
-    private static boolean dfs(AnalysisMethod method, ArrayList<String> methods, Set<String> seen) {
-        String name = method.format("%H.%n(%P)");
-        if (!seen.add(name)) {
-            return false;
-        }
-        methods.add(name);
-        if (method.isRootMethod()) {
-            return true;
-        }
-        Set<AnalysisMethod> callers = method.getCallers();
-        for (AnalysisMethod caller : callers) {
-            if (dfs(caller, methods, seen)) {
-                return true;
-            }
-        }
-        if (callers.isEmpty()) {
-            System.out.println(serializePath(methods, new StringBuilder()));
-        }
-        methods.remove(methods.size() - 1);
-        return false;
     }
 
     void reportBuildArtifacts(String imageName) {
