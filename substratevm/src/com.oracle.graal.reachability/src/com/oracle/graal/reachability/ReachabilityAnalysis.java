@@ -426,8 +426,6 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
             summary = methodSummaryProvider.getSummary(this, graph);
         }
         ReachabilityAnalysisMethod method = analysisMethod(graph.method());
-        method.registerAsInvoked();
-        method.registerAsImplementationInvoked();
         processSummary(method, summary.withoutMethods());
 
         registerForeignCalls(graph);
