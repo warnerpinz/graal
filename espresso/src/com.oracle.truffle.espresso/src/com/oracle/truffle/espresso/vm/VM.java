@@ -1892,9 +1892,9 @@ public final class VM extends NativeEnv implements ContextAccess {
         try {
             if (isHidden) {
                 // Special handling
-                k = getRegistries().defineKlass(env, type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd, nest, classData, isStrong));
+                k = env.getRegistries().defineKlass(env, type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd, nest, classData, isStrong));
             } else {
-                k = getRegistries().defineKlass(env, type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd));
+                k = env.getRegistries().defineKlass(env, type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd));
             }
         } catch (EspressoClassLoadingException e) {
             throw e.asGuestException(env.getMeta());
@@ -1923,7 +1923,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(getContext());
         StaticObject clazz;
         try {
-            clazz = getContext().getRegistries().defineKlass(env, type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd)).mirror();
+            clazz = env.getRegistries().defineKlass(env, type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd)).mirror();
         } catch (EspressoClassLoadingException e) {
             throw e.asGuestException(env.getMeta());
         }
@@ -1943,7 +1943,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         Symbol<Type> type = getTypes().fromClassGetName(getMeta().toHostString(name));
         ClassLoadingEnv.InContext env = new ClassLoadingEnv.InContext(getContext());
         // HotSpot skips reflection (DelegatingClassLoader) class loaders.
-        Klass klass = getRegistries().findLoadedClass(env, type, nonReflectionClassLoader(loader));
+        Klass klass = env.getRegistries().findLoadedClass(env, type, nonReflectionClassLoader(loader));
         if (klass == null) {
             return StaticObject.NULL;
         }
