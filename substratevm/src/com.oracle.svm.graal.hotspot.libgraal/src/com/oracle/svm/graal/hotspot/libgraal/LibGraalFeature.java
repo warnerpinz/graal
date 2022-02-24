@@ -29,7 +29,6 @@ import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -155,7 +154,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.services.Services;
 
 class LibGraalOptions {
@@ -573,14 +571,15 @@ final class Target_jdk_vm_ci_hotspot_SharedLibraryJVMCIReflection {
 
     // Annotations are currently unsupported in libgraal. These substitutions will turn their use
     // into a image time build error.
-    @Delete
-    static native Annotation[] getClassAnnotations(String className);
-
-    @Delete
-    static native Annotation[][] getParameterAnnotations(String className, String methodName);
-
-    @Delete
-    static native Annotation[] getMethodAnnotationsInternal(ResolvedJavaMethod javaMethod);
+    // todo(d-kozak) re-enable?
+// @Delete
+// static native Annotation[] getClassAnnotations(String className);
+//
+// @Delete
+// static native Annotation[][] getParameterAnnotations(String className, String methodName);
+//
+// @Delete
+// static native Annotation[] getMethodAnnotationsInternal(ResolvedJavaMethod javaMethod);
 }
 
 @TargetClass(value = SpeculationReasonGroup.class, onlyWith = LibGraalFeature.IsEnabled.class)
