@@ -42,6 +42,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import com.oracle.graal.reachability.ReachabilityAnalysisMethod;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -575,14 +576,21 @@ public final class GraalFeature implements Feature {
         callTargets.sort((t1, t2) -> Integer.compare(t1.invoke().bci(), t2.invoke().bci()));
 
         for (MethodCallTargetNode targetNode : callTargets) {
+            // todo(d-kozak) create proper abstraction
             AnalysisMethod targetMethod = (AnalysisMethod) targetNode.targetMethod();
-            PointsToAnalysisMethod callerMethod = (PointsToAnalysisMethod) targetNode.invoke().stateAfter().getMethod();
-            InvokeTypeFlow invokeFlow = callerMethod.getTypeFlow().getOriginalMethodFlows().getInvoke(targetNode.invoke().bci());
+            ResolvedJavaMethod callerMethod = targetNode.invoke().stateAfter().getMethod();
+            Collection<AnalysisMethod> allImplementationMethods;
+            if (callerMethod instanceof PointsToAnalysisMethod) {
+                PointsToAnalysisMethod pointToCalledMethod = (PointsToAnalysisMethod) callerMethod;
+                InvokeTypeFlow invokeFlow = pointToCalledMethod.getTypeFlow().getOriginalMethodFlows().getInvoke(targetNode.invoke().bci());
 
-            if (invokeFlow == null) {
-                continue;
+                if (invokeFlow == null) {
+                    continue;
+                }
+                allImplementationMethods = invokeFlow.getCallees();
+            } else {
+                allImplementationMethods = ((ReachabilityAnalysisMethod) targetMethod).collectAllImplementations();
             }
-            Collection<AnalysisMethod> allImplementationMethods = invokeFlow.getCallees();
 
             /*
              * Eventually we want to remove all invokes that are unreachable, i.e., have no
