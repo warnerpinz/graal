@@ -533,7 +533,7 @@ public class ProgressReporter {
                 l().a(" ").link(p).dim().a(" (").a(artifactType.name().toLowerCase()).a(")").reset().println();
             }
         });
-        if (generator.getBigbang() != null && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
+        if (generator.getBigbang() != null && CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
             l().a(" ").link(reportImageBuildStatistics(imageName, generator.getBigbang())).println();
         }
         l().a(" ").link(reportBuildArtifacts(imageName, generator.getBuildArtifacts())).println();
