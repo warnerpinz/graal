@@ -574,10 +574,6 @@ public class NativeImageGenerator {
                 return;
             }
 
-            dump(imageName, aUniverse);
-
-// dumpAnalysisStats();
-
             NativeImageHeap heap;
             HostedMetaAccess hMetaAccess;
             SharedRuntimeConfigurationBuilder runtime;
@@ -730,14 +726,6 @@ public class NativeImageGenerator {
                 methodSummaryStorage.persistData();
             }
         }
-    }
-
-    private void dump(String bigbang, AnalysisUniverse aUniverse) {
-        long types = aUniverse.getTypes().stream().filter(AnalysisType::isReachable).count();
-        long instantiatedTypes = aUniverse.getTypes().stream().filter(AnalysisType::isInstantiated).count();
-        long invokedMethods = aUniverse.getMethods().stream().filter(AnalysisMethod::isInvoked).count();
-        long implInvokedMethods = aUniverse.getMethods().stream().filter(AnalysisMethod::isImplementationInvoked).count();
-        System.out.println("!!!!!" + bigbang + " types:" + instantiatedTypes + " / " + types + ", methods: " + invokedMethods + " / " + implInvokedMethods);
     }
 
     void reportBuildArtifacts(String imageName) {
