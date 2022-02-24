@@ -118,8 +118,9 @@ public class TypeInitializerGraph {
                         : Safety.UNSAFE;
     }
 
+    @SuppressWarnings("unused")
     boolean isUnsafe(AnalysisType type) {
-        // todo fix
+        // todo(d-kozak) fix
         return true;
         // return types.get(type) == Safety.UNSAFE;
     }
