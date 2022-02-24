@@ -55,7 +55,7 @@ public class ImageBuildStatistics {
     }
 
     public void incByteCodeException(BytecodeExceptionNode.BytecodeExceptionKind kind, CheckCountLocation location, NodeSourcePosition nodeSourcePosition, ResolvedJavaMethod method) {
-        counters.get(getName(kind.name(), location)).incCounter(nodeSourcePosition, method);
+        counters.get(getName(kind.name(), location)).incCounter(nodeSourcePosition, method, kind);
     }
 
     public Consumer<PrintWriter> getReporter() {
@@ -98,7 +98,7 @@ public class ImageBuildStatistics {
             originalCounter.incrementAndGet();
         }
 
-        private void incCounter(NodeSourcePosition nodeSourcePosition, ResolvedJavaMethod method) {
+        private void incCounter(NodeSourcePosition nodeSourcePosition, ResolvedJavaMethod method, BytecodeExceptionNode.BytecodeExceptionKind kind) {
             if (original.contains(nodeSourcePosition)) {
                 /*
                  * We have already seen this exception at the given source location, duplication
@@ -123,7 +123,10 @@ public class ImageBuildStatistics {
                          * This node source position is coming from a virtual call.
                          */
                     } else {
-                        throw GraalError.shouldNotReachHere("Found new node " + nodeSourcePosition + " after bytecode parsing in graph for " + method.format("%h.%n(%p)"));
+                        // throw GraalError.shouldNotReachHere("Found new node " +
+                        // nodeSourcePosition + " after bytecode
+                        // parsing in graph for " + method.format("%h.%n(%p)"));
+                        System.out.println("Found new node: " + kind + " position: "+ nodeSourcePosition + " after bytecode parsing in graph for " + method.format("%H.%n(%p)"));
                     }
                 }
             }
