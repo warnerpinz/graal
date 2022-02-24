@@ -35,6 +35,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class ReachabilityAnalysisMethod extends AnalysisMethod {
 
@@ -91,5 +93,13 @@ public class ReachabilityAnalysisMethod extends AnalysisMethod {
 
     public void addInvokes(List<InvokeInfo> invokeInfos) {
         this.invokeInfos.addAll(invokeInfos);
+    }
+
+    public Collection<AnalysisMethod> collectAllImplementations() {
+        return getDeclaringClass().getInstantiatedSubtypes()
+                        .stream()
+                        .map(type -> type.resolveConcreteMethod(this))
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
     }
 }
