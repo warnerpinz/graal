@@ -408,6 +408,10 @@ class TikaWrkBenchmarkSuite(BaseTikaBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenc
     def rules(self, out, benchmarks, bmSuiteArgs):
         return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(TikaWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
 
+    def extra_image_build_argument(self, benchmark, args):
+        return super(TikaWrkBenchmarkSuite, self).extra_image_build_argument(benchmark, args) + [
+            '--initialize-at-run-time=io.netty.internal.tcnative.SSL,io.netty.handler.codec.compression.ZstdOptions']
+
 mx_benchmark.add_bm_suite(TikaWrkBenchmarkSuite())
 
 
