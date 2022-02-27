@@ -92,13 +92,31 @@ public class BytecodeExceptionNodeSourceCollection {
         NodeSourcePosition position2 = newNodeSourcePosition;
 
         while (position1 != null) {
-            if (!equals(original, newNodeSourcePosition)) {
+            if (!equals(position1, position2)) {
                 return false;
             }
             position1 = position1.getCaller();
             position2 = position2.getCaller();
         }
         return true;
+    }
+
+    private static boolean foundSuffix(NodeSourcePosition original, NodeSourcePosition newNodeSourcePosition) {
+        if (original.depth() > newNodeSourcePosition.depth()) {
+            return false;
+        }
+
+        NodeSourcePosition position1 = original;
+        NodeSourcePosition position2 = newNodeSourcePosition;
+
+        while (position1 != null && position2 != null) {
+            if (equals(position1, position2)) {
+                position1 = position1.getCaller();
+            }
+            position2 = position2.getCaller();
+        }
+
+        return position1 == null && position2 == null;
     }
 
     public static boolean hasOriginalPrefix(NodeSourcePosition nodeSourcePosition) {
@@ -114,7 +132,16 @@ public class BytecodeExceptionNodeSourceCollection {
         return isOriginal(getRootNodeSourcePosition(nodeSourcePosition));
     }
 
+    private static boolean hasExceptionObjectPositionSufix(NodeSourcePosition nodeSourcePosition) {
+        for (NodeSourcePosition org : exceptionObjectsSourcePosition) {
+            if (foundSuffix(org, nodeSourcePosition)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static boolean hasRootFromExceptionObject(NodeSourcePosition nodeSourcePosition) {
-        return isExceptionObjectPosition(getRootNodeSourcePosition(nodeSourcePosition));
+        return isExceptionObjectPosition(getRootNodeSourcePosition(nodeSourcePosition)) || hasExceptionObjectPositionSufix(nodeSourcePosition);
     }
 }
