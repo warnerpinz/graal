@@ -55,7 +55,7 @@ public class ImageBuildStatistics {
     }
 
     public void incByteCodeException(BytecodeExceptionNode.BytecodeExceptionKind kind, CheckCountLocation location, NodeSourcePosition nodeSourcePosition, ResolvedJavaMethod method) {
-        counters.get(getName(kind.name(), location)).incCounter(nodeSourcePosition, method, kind);
+        counters.get(getName(kind.name(), location)).incCounter(nodeSourcePosition, method);
     }
 
     public Consumer<PrintWriter> getReporter() {
@@ -98,7 +98,7 @@ public class ImageBuildStatistics {
             originalCounter.incrementAndGet();
         }
 
-        private void incCounter(NodeSourcePosition nodeSourcePosition, ResolvedJavaMethod method, BytecodeExceptionNode.BytecodeExceptionKind kind) {
+        private void incCounter(NodeSourcePosition nodeSourcePosition, ResolvedJavaMethod method) {
             if (original.contains(nodeSourcePosition)) {
                 /*
                  * We have already seen this exception at the given source location, duplication
