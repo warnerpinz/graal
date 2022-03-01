@@ -137,12 +137,6 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
     }
 
     private void markMethodImplementationInvoked(ReachabilityAnalysisMethod method, Reason reason) {
-        if (method == null) {
-            System.err.println("Null method received");
-            System.out.println("reason: " + reason);
-            new RuntimeException().printStackTrace();
-            return;
-        }
         if (!method.registerAsImplementationInvoked()) {
             return;
         }
