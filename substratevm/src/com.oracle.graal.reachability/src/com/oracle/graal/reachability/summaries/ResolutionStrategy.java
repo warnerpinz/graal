@@ -28,6 +28,9 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.reachability.SerializableMethodSummary;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public interface ResolutionStrategy {
 
@@ -41,9 +44,9 @@ public interface ResolutionStrategy {
 
     AnalysisField resolveField(SerializableMethodSummary.FieldId fieldId);
 
-    SerializableMethodSummary.ClassId getId(AnalysisType type);
+    SerializableMethodSummary.ClassId getId(ResolvedJavaType type);
 
-    SerializableMethodSummary.MethodId getId(AnalysisMethod method);
+    SerializableMethodSummary.MethodId getId(ResolvedJavaMethod method);
 
-    SerializableMethodSummary.FieldId getId(AnalysisField type);
+    SerializableMethodSummary.FieldId getId(ResolvedJavaField type);
 }

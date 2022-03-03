@@ -29,16 +29,22 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.reachability.SerializableMethodSummary;
 import com.oracle.graal.reachability.summaries.ResolutionStrategy;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class ResolutionStrategyImpl implements ResolutionStrategy {
     private final ImageClassLoader loader;
     private final AnalysisMetaAccess metaAccess;
+    private final AnalysisUniverse universe;
 
     public ResolutionStrategyImpl(ImageClassLoader loader, AnalysisMetaAccess metaAccess) {
         this.loader = loader;
         this.metaAccess = metaAccess;
+        this.universe = metaAccess.getUniverse();
     }
 
     @Override
@@ -57,14 +63,14 @@ public class ResolutionStrategyImpl implements ResolutionStrategy {
 
     @Override
     public AnalysisMethod resolveMethod(AnalysisType clazz, SerializableMethodSummary.MethodId methodId) {
-        for (AnalysisMethod method : clazz.getDeclaredMethods()) {
+        for (ResolvedJavaMethod method : clazz.getWrapped().getDeclaredMethods()) {
             if (getId(method).equals(methodId)) {
-                return method;
+                return universe.lookup(method);
             }
         }
-        for (AnalysisMethod ctor : clazz.getDeclaredConstructors()) {
+        for (ResolvedJavaMethod ctor : clazz.getWrapped().getDeclaredConstructors()) {
             if (getId(ctor).equals(methodId)) {
-                return ctor;
+                return universe.lookup(ctor);
             }
         }
         return null;
@@ -104,17 +110,17 @@ public class ResolutionStrategyImpl implements ResolutionStrategy {
     }
 
     @Override
-    public SerializableMethodSummary.ClassId getId(AnalysisType type) {
-        return new SerializableMethodSummary.ClassId(type.getJavaClass().getName());
+    public SerializableMethodSummary.ClassId getId(ResolvedJavaType type) {
+        return new SerializableMethodSummary.ClassId(type.toJavaName());
     }
 
     @Override
-    public SerializableMethodSummary.MethodId getId(AnalysisMethod method) {
-        return new SerializableMethodSummary.MethodId(getId(method.getDeclaringClass()), method.getQualifiedName());
+    public SerializableMethodSummary.MethodId getId(ResolvedJavaMethod method) {
+        return new SerializableMethodSummary.MethodId(getId(method.getDeclaringClass()), method.format("%H.%n(%P)"));
     }
 
     @Override
-    public SerializableMethodSummary.FieldId getId(AnalysisField field) {
+    public SerializableMethodSummary.FieldId getId(ResolvedJavaField field) {
         return new SerializableMethodSummary.FieldId(getId(field.getDeclaringClass()), field.getName());
     }
 }

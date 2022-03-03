@@ -809,13 +809,8 @@ public class CompileQueue {
         AnalysisMethod aMethod = hMethod.getWrapped();
         StructuredGraph aGraph = aMethod.getAnalyzedGraph();
         if (aGraph == null) {
-            // todo (d-kozak) how to handle this properly? (spring boot case, where method.getCode()
-            // is null)
-            HostedProviders providers = universe.getBigBang().getProviders();
             String msg = "Method not parsed during static analysis: " + aMethod.format("%r %H.%n(%p)") + ". Reachable from: " + reason;
-            System.err.println(msg);
-            aGraph = DeletedMethod.buildGraph(debug, hMethod, providers, msg);
-// throw VMError.shouldNotReachHere(msg);
+            throw VMError.shouldNotReachHere(msg);
         }
 
         /*
