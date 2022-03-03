@@ -25,9 +25,11 @@
 package com.oracle.graal.reachability.summaries;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.reachability.MethodSummary;
 import com.oracle.graal.reachability.MethodSummaryProvider;
 import com.oracle.graal.reachability.SerializableMethodSummary;
@@ -75,6 +77,9 @@ public class MethodSummaryStorage implements MethodSummaryProvider {
     public MethodSummary getSummary(BigBang bb, AnalysisMethod method) {
         PersistedSummary persistedSummary = storage.get(method);
         if (persistedSummary != null) {
+            AnalysisParsedGraph analysisParsedGraph = method.ensureGraphParsed(bb);
+            StructuredGraph decoded = InlineBeforeAnalysis.decodeGraph(bb, method, analysisParsedGraph);
+            method.setAnalyzedGraph(decoded);
             return persistedSummary.getSummary();
         }
         MethodSummary summary = simpleInMemoryMethodSummaryProvider.getSummary(bb, method);
@@ -103,8 +108,11 @@ public class MethodSummaryStorage implements MethodSummaryProvider {
     }
 
     private void processSummaryFile(Map<SerializableMethodSummary.MethodId, SerializableMethodSummary> summaries) {
+        int success = 0;
+        int all = 0;
         for (Map.Entry<SerializableMethodSummary.MethodId, SerializableMethodSummary> methodEntry : summaries.entrySet()) {
             System.out.println("!! " + methodEntry.getKey());
+            all++;
             AnalysisMethod analysisMethod = resolutionStrategy.resolveMethod(methodEntry.getKey());
             if (analysisMethod == null) {
                 err("Could not resolve method " + methodEntry.getKey());
@@ -113,7 +121,9 @@ public class MethodSummaryStorage implements MethodSummaryProvider {
             try {
                 if (hashingStrategy.isValid(analysisMethod, methodEntry.getValue())) {
                     MethodSummary resolvedSummary = resolveSummary(methodEntry.getValue());
+                    System.out.println(resolvedSummary);
                     storage.put(analysisMethod, hashingStrategy.prepare(analysisMethod, resolvedSummary));
+                    success++;
                 } else {
                     err("Method summary for " + analysisMethod + " is not valid.");
                 }
@@ -122,6 +132,7 @@ public class MethodSummaryStorage implements MethodSummaryProvider {
                 continue;
             }
         }
+        System.out.println("!!! Loaded " + success + " out of " + all + " summaries.");
     }
 
     private MethodSummary resolveSummary(SerializableMethodSummary value) {
