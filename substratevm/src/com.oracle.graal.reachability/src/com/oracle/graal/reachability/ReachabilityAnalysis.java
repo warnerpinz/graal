@@ -256,7 +256,8 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
                 if (implementationInvokedMethod == null) {
                     continue;
                 }
-                markMethodImplementationInvoked(assertReachabilityAnalysisMethod(implementationInvokedMethod), new InvokeReason(method.getReason(), method, CallTargetNode.InvokeKind.Virtual));
+                markMethodImplementationInvoked(assertReachabilityAnalysisMethod(implementationInvokedMethod),
+                                new InvokeReason(((ReachabilityAnalysisMethod) method).getReason(), method, CallTargetNode.InvokeKind.Virtual));
             }
         });
     }

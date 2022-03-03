@@ -96,15 +96,13 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
     private static final Object GRAPH_CACHE_UNPARSED = "unparsed";
     private static final Object GRAPH_CACHE_CLEARED = "cleared by cleanupAfterAnalysis";
 
-    private volatile StructuredGraph analyzedGraph;
+    private StructuredGraph analyzedGraph;
 
     /**
      * All concrete methods that can actually be called when calling this method. This includes all
      * overridden methods in subclasses, as well as this method if it is non-abstract.
      */
     protected AnalysisMethod[] implementations;
-
-    private Reason reason;
 
     public AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped) {
         this.wrapped = wrapped;
@@ -218,13 +216,7 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
     }
 
     public boolean registerAsInvoked() {
-        if (AtomicUtils.atomicMark(isInvoked)) {
-            getDeclaringClass()
-                    .getInvokedMethods()
-                    .add(this);
-            return true;
-        }
-        return false;
+        return AtomicUtils.atomicMark(isInvoked);
     }
 
     public boolean registerAsImplementationInvoked() {
@@ -647,13 +639,5 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
 
     public void setAnalyzedGraph(StructuredGraph analyzedGraph) {
         this.analyzedGraph = analyzedGraph;
-    }
-
-    public void setReason(Reason reason) {
-        this.reason = reason;
-    }
-
-    public Reason getReason() {
-        return reason;
     }
 }
