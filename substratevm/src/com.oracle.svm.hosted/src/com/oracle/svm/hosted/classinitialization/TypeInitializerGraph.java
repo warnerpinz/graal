@@ -41,6 +41,7 @@ import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
+import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
@@ -120,9 +121,11 @@ public class TypeInitializerGraph {
 
     @SuppressWarnings("unused")
     boolean isUnsafe(AnalysisType type) {
-        // todo(d-kozak) fix
-        return true;
-        // return types.get(type) == Safety.UNSAFE;
+        if (NativeImageOptions.UseExperimentalReachabilityAnalysis.getValue()) {
+            // todo (d-kozak) TypeInitializerGraph uses points-to information directly
+            return true;
+        }
+        return types.get(type) == Safety.UNSAFE;
     }
 
     public void setUnsafe(AnalysisType t) {

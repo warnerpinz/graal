@@ -89,10 +89,10 @@ public class NativeImageOptions {
     public static final HostedOptionKey<Boolean> PrintMethodHistogram = new HostedOptionKey<>(false);
 
     @Option(help = "Print the sizes of the elements of the built image")//
-    public static final HostedOptionKey<Boolean> PrintImageElementSizes = new HostedOptionKey<>(true);
+    public static final HostedOptionKey<Boolean> PrintImageElementSizes = new HostedOptionKey<>(false);
 
     @Option(help = "Print the sizes of the native image heap as the image is built")//
-    public static final HostedOptionKey<Boolean> PrintImageHeapPartitionSizes = new HostedOptionKey<>(true);
+    public static final HostedOptionKey<Boolean> PrintImageHeapPartitionSizes = new HostedOptionKey<>(false);
 
     @Option(help = "Print a list of active features")//
     public static final HostedOptionKey<Boolean> PrintFeatures = new HostedOptionKey<>(false);
@@ -184,7 +184,7 @@ public class NativeImageOptions {
     public static final HostedOptionKey<Boolean> UnsafeOffsetWarningsAreFatal = new HostedOptionKey<>(false);
 
     @Option(help = "Show exception stack traces for exceptions during image building.)")//
-    public static final HostedOptionKey<Boolean> ReportExceptionStackTraces = new HostedOptionKey<>(true);
+    public static final HostedOptionKey<Boolean> ReportExceptionStackTraces = new HostedOptionKey<>(areAssertionsEnabled());
 
     @Option(help = "Maximum number of types allowed in the image. Used for tests where small number of types is necessary.", type = Debug)//
     public static final HostedOptionKey<Integer> MaxReachableTypes = new HostedOptionKey<>(-1);
