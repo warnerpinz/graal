@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -58,7 +57,6 @@ final class RuntimeCodeCacheWalker implements CodeInfoVisitor {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.")
     @DuplicatedInNativeCode
     public <T extends CodeInfo> boolean visitCode(T codeInfo) {
         if (RuntimeCodeInfoAccess.areAllObjectsOnImageHeap(codeInfo)) {
@@ -114,12 +112,10 @@ final class RuntimeCodeCacheWalker implements CodeInfoVisitor {
         return true;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
     private static boolean isReachable(Object possiblyForwardedObject) {
         return RuntimeCodeCacheReachabilityAnalyzer.isReachable(Word.objectToUntrackedPointer(possiblyForwardedObject));
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
     private boolean hasWeakReferenceToUnreachableObject(CodeInfo codeInfo) {
         checkForUnreachableObjectsVisitor.initialize();
         RuntimeCodeInfoAccess.walkWeakReferences(codeInfo, checkForUnreachableObjectsVisitor);

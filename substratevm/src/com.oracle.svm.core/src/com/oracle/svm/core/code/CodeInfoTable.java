@@ -226,7 +226,6 @@ public class CodeInfoTable {
     }
 
     @RestrictHeapAccess(access = Access.NO_ALLOCATION, reason = "Called by the GC")
-    @Uninterruptible(reason = "Called from uninterruptible code.")
     public static void invalidateNonStackCodeAtSafepoint(CodeInfo info) {
         VMOperation.guaranteeGCInProgress("Must only be called during a GC.");
         RuntimeCodeCache codeCache = getRuntimeCodeCache();
