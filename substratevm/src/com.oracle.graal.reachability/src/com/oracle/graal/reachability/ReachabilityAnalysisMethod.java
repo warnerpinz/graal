@@ -27,6 +27,7 @@ package com.oracle.graal.reachability;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
+import com.oracle.graal.pointsto.meta.Reason;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -43,6 +44,8 @@ public class ReachabilityAnalysisMethod extends AnalysisMethod {
     private final AnalysisUniverse universe;
     private MethodSummary summary;
     private List<InvokeInfo> invokeInfos = Collections.synchronizedList(new ArrayList<>());
+
+    private Reason reason;
 
     public ReachabilityAnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped) {
         super(universe, wrapped);
@@ -101,5 +104,22 @@ public class ReachabilityAnalysisMethod extends AnalysisMethod {
                         .map(type -> type.resolveConcreteMethod(this))
                         .filter(Objects::nonNull)
                         .collect(Collectors.toSet());
+    }
+
+    @Override
+    public boolean registerAsInvoked() {
+        if (super.registerAsInvoked()) {
+            getDeclaringClass().getInvokedMethods().add(this);
+            return true;
+        }
+        return false;
+    }
+
+    public void setReason(Reason reason) {
+        this.reason = reason;
+    }
+
+    public Reason getReason() {
+        return reason;
     }
 }

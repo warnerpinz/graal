@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jfr;
 
-
 /**
  * An interface that collects all {@link JfrChunkWriter} methods that may be called without holding
  * a lock.

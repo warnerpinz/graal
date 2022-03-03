@@ -122,8 +122,7 @@ public class TypeInitializerGraph {
     @SuppressWarnings("unused")
     boolean isUnsafe(AnalysisType type) {
         if (NativeImageOptions.UseExperimentalReachabilityAnalysis.getValue()) {
-            // todo (d-kozak) TypeInitializerGraph uses points-to information directly
-            return true;
+            return false;
         }
         return types.get(type) == Safety.UNSAFE;
     }

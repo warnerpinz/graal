@@ -41,7 +41,6 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ForkJoinPool;
-import java.util.stream.Collectors;
 
 import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 import org.graalvm.collections.EconomicMap;
@@ -410,8 +409,9 @@ public class CompileQueue {
             }
 
             if (!NativeImageOptions.UseExperimentalReachabilityAnalysis.getValue()) {
-                // Reachability Analysis has much denser call graphs compared to the Points-to
-                // Analysis, therefore these annotations would have to be added on a lot of new
+                // Reachability Analysis creates call graph with more edges compared to the
+                // Points-to
+                // Analysis, therefore the annotations would have to be added on a lot of new
                 // methods if these checks are supposed to pass.
                 // Checking @Uninterruptible annotations does not take long enough to justify a
                 // timer.
@@ -574,14 +574,13 @@ public class CompileQueue {
      */
     private void parseAheadOfTimeCompiledMethods() {
         universe.getMethods().stream()
-                        .filter(method1 -> method1.isEntryPoint() || CompilationInfoSupport.singleton().isForcedCompilation(method1))
-                        .collect(Collectors.toList()).forEach(method -> ensureParsed(method, null, new EntryPointReason()));
+                        .filter(method -> method.isEntryPoint() || CompilationInfoSupport.singleton().isForcedCompilation(method))
+                        .forEach(method -> ensureParsed(method, null, new EntryPointReason()));
 
         SubstrateForeignCallsProvider foreignCallsProvider = (SubstrateForeignCallsProvider) runtimeConfig.getProviders().getForeignCalls();
         foreignCallsProvider.getForeignCalls().values().stream()
                         .map(linkage -> (HostedMethod) linkage.getDescriptor().findMethod(runtimeConfig.getProviders().getMetaAccess()))
-                        .filter(method1 -> method1.wrapped.isRootMethod())
-                        .collect(Collectors.toList())
+                        .filter(method -> method.wrapped.isRootMethod())
                         .forEach(method -> ensureParsed(method, null, new EntryPointReason()));
     }
 
@@ -1046,7 +1045,6 @@ public class CompileQueue {
                             method.format("%H.%n(%p)") +
                             ". Make sure you have used Graal annotation processors on the parent-project of the method's declaring class.");
         }
-
 
         HostedProviders providers = (HostedProviders) config.lookupBackend(method).getProviders();
         boolean needParsing = false;
