@@ -679,10 +679,8 @@ public final class GraalFeature implements Feature {
             }
         }
         if (Options.EnforceMaxRuntimeCompileMethods.getValue() && maxMethods != 0 && methods.size() > maxMethods) {
-            // todo(d-kozak) re-enable
-// printDeepestLevelPath();
-// throw VMError.shouldNotReachHere("Number of methods for runtime compilation exceeds the allowed
-// limit: " + methods.size() + " > " + maxMethods);
+            printDeepestLevelPath();
+            throw VMError.shouldNotReachHere("Number of methods for runtime compilation exceeds the allowed limit: " + methods.size() + " > " + maxMethods);
         }
 
         HostedMetaAccess hMetaAccess = config.getMetaAccess();

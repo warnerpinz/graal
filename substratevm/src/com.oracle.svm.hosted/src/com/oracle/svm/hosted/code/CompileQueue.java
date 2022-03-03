@@ -29,7 +29,6 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -38,7 +37,6 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -391,6 +389,7 @@ public class CompileQueue {
         this.executor = new CompletionExecutor(universe.getBigBang(), executorService, universe.getBigBang().getHeartbeatCallback());
         this.featureHandler = featureHandler;
         this.snippetReflection = snippetReflection;
+
         callForReplacements(debug, runtimeConfig);
     }
 
@@ -409,12 +408,18 @@ public class CompileQueue {
             try (ProgressReporter.ReporterClosable ac = reporter.printParsing()) {
                 parseAll();
             }
-            // todo re-enable
-            // Checking @Uninterruptible annotations does not take long enough to justify a timer.
-// new UninterruptibleAnnotationChecker(universe.getMethods()).check();
-            // Checking @RestrictHeapAccess annotations does not take long enough to justify a
-            // timer.
-// RestrictHeapAccessAnnotationChecker.check(debug, universe, universe.getMethods());
+
+            if (!NativeImageOptions.UseExperimentalReachabilityAnalysis.getValue()) {
+                // Reachability Analysis has much denser call graphs compared to the Points-to
+                // Analysis, therefore these annotations would have to be added on a lot of new
+                // methods if these checks are supposed to pass.
+                // Checking @Uninterruptible annotations does not take long enough to justify a
+                // timer.
+                new UninterruptibleAnnotationChecker(universe.getMethods()).check();
+                // Checking @RestrictHeapAccess annotations does not take long enough to justify a
+                // timer.
+                RestrictHeapAccessAnnotationChecker.check(debug, universe, universe.getMethods());
+            }
 
             /*
              * The graph in the analysis universe is no longer necessary. This clears the graph for
@@ -568,19 +573,15 @@ public class CompileQueue {
      * parsed methods.
      */
     private void parseAheadOfTimeCompiledMethods() {
-        List<HostedMethod> entryPoints = universe.getMethods().stream()
-                        .filter(method -> method.isEntryPoint() || CompilationInfoSupport.singleton().isForcedCompilation(method))
-                        .collect(Collectors.toList());
-        System.out.println("Entry points: " + entryPoints.size());
-        entryPoints.forEach(method -> ensureParsed(method, null, new EntryPointReason()));
+        universe.getMethods().stream()
+                        .filter(method1 -> method1.isEntryPoint() || CompilationInfoSupport.singleton().isForcedCompilation(method1))
+                        .collect(Collectors.toList()).forEach(method -> ensureParsed(method, null, new EntryPointReason()));
 
         SubstrateForeignCallsProvider foreignCallsProvider = (SubstrateForeignCallsProvider) runtimeConfig.getProviders().getForeignCalls();
-        List<HostedMethod> foreignCallEntryPoints = foreignCallsProvider.getForeignCalls().values().stream()
+        foreignCallsProvider.getForeignCalls().values().stream()
                         .map(linkage -> (HostedMethod) linkage.getDescriptor().findMethod(runtimeConfig.getProviders().getMetaAccess()))
-                        .filter(method -> method.wrapped.isRootMethod())
-                        .collect(Collectors.toList());
-        System.out.println("Foreign call entry points: " + foreignCallEntryPoints.size());
-        foreignCallEntryPoints
+                        .filter(method1 -> method1.wrapped.isRootMethod())
+                        .collect(Collectors.toList())
                         .forEach(method -> ensureParsed(method, null, new EntryPointReason()));
     }
 
@@ -809,15 +810,14 @@ public class CompileQueue {
         AnalysisMethod aMethod = hMethod.getWrapped();
         StructuredGraph aGraph = aMethod.getAnalyzedGraph();
         if (aGraph == null) {
-            String msg = "Method not parsed during static analysis: " + aMethod.format("%r %H.%n(%p)") + ". Reachable from: " + reason;
-            throw VMError.shouldNotReachHere(msg);
+            throw VMError.shouldNotReachHere("Method not parsed during static analysis: " + aMethod.format("%r %H.%n(%p)") + ". Reachable from: " + reason);
         }
 
         /*
          * The graph in the analysis universe is no longer necessary once it is transplanted into
          * the hosted universe.
          */
-        // aMethod.setAnalyzedGraph(null);
+        aMethod.setAnalyzedGraph(null);
 
         OptionValues options = getCustomizedOptions(debug);
         /*
@@ -1039,8 +1039,6 @@ public class CompileQueue {
 
     private final boolean parseOnce = SubstrateOptions.parseOnce();
 
-    public static final Set<HostedMethod> parsedMethods = ConcurrentHashMap.newKeySet();
-
     @SuppressWarnings("try")
     private void defaultParseFunction(DebugContext debug, HostedMethod method, CompileReason reason, RuntimeConfiguration config) {
         if (method.getAnnotation(NodeIntrinsic.class) != null) {
@@ -1049,11 +1047,6 @@ public class CompileQueue {
                             ". Make sure you have used Graal annotation processors on the parent-project of the method's declaring class.");
         }
 
-        if (method.getQualifiedName().startsWith("org.springframework.transaction.reactive.TransactionalOperator.create(")) {
-            // todo(d-kozak) get rid of this
-            System.err.println("!!!!!! Skipping org.springframework.transaction.reactive.TransactionalOperator.create(");
-            return;
-        }
 
         HostedProviders providers = (HostedProviders) config.lookupBackend(method).getProviders();
         boolean needParsing = false;
@@ -1121,8 +1114,6 @@ public class CompileQueue {
                     }
                 }
 
-                parsedMethods.add(method);
-
             } catch (Throwable ex) {
                 GraalError error = ex instanceof GraalError ? (GraalError) ex : new GraalError(ex);
                 error.addContext("method: " + method.format("%r %H.%n(%p)"));
@@ -1134,18 +1125,9 @@ public class CompileQueue {
         }
     }
 
-    public static final Map<HostedMethod, List<HostedMethod>> parseTree = new ConcurrentHashMap<>();
-
-    private static List<HostedMethod> getEntry(HostedMethod method) {
-        return parseTree.computeIfAbsent(method, key -> Collections.synchronizedList(new ArrayList<>()));
-    }
-
     private void ensureParsed(HostedMethod method, CompileReason reason, CallTargetNode targetNode, HostedMethod invokeTarget, boolean isIndirect) {
         if (isIndirect) {
-            HostedMethod[] implementations = invokeTarget.getImplementations();
-            List<HostedMethod> targets = getEntry(method);
-            Collections.addAll(targets, implementations);
-            for (HostedMethod invokeImplementation : implementations) {
+            for (HostedMethod invokeImplementation : invokeTarget.getImplementations()) {
                 handleSpecialization(method, targetNode, invokeTarget, invokeImplementation);
                 ensureParsed(invokeImplementation, method, new VirtualCallReason(method, invokeImplementation, reason));
             }
@@ -1161,7 +1143,6 @@ public class CompileQueue {
              * implementation invoked status.
              */
             if (invokeTarget.wrapped.isSimplyImplementationInvoked()) {
-                getEntry(method).add(invokeTarget);
                 handleSpecialization(method, targetNode, invokeTarget, invokeTarget);
                 ensureParsed(invokeTarget, method, new DirectCallReason(method, reason));
             }
@@ -1340,8 +1321,6 @@ public class CompileQueue {
         return fun.compile(debug, method, compilationIdentifier, reason, runtimeConfig);
     }
 
-    public static final Set<HostedMethod> compiledMethods = ConcurrentHashMap.newKeySet();
-
     @SuppressWarnings("try")
     private CompilationResult defaultCompileFunction(DebugContext debug, HostedMethod method, CompilationIdentifier compilationIdentifier, CompileReason reason, RuntimeConfiguration config) {
         if (NativeImageOptions.PrintAOTCompilation.getValue()) {
@@ -1391,8 +1370,6 @@ public class CompileQueue {
                 if (result.getTargetCode().length > result.getTargetCodeSize()) {
                     result.setTargetCode(Arrays.copyOf(result.getTargetCode(), result.getTargetCodeSize()), result.getTargetCodeSize());
                 }
-
-                compiledMethods.add(method);
 
                 return result;
             }

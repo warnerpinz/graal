@@ -31,7 +31,6 @@ import static com.oracle.svm.hosted.NativeImageOptions.UseExperimentalReachabili
 import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.lang.ref.Reference;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -55,7 +54,6 @@ import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.ObjectScanningObserver;
@@ -63,7 +61,6 @@ import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisFactory;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.reachability.MethodSummaryProvider;
 import com.oracle.graal.reachability.ReachabilityAnalysisFactory;
 import com.oracle.graal.reachability.ReachabilityObjectScanner;
@@ -645,9 +642,6 @@ public class NativeImageGenerator {
                 compileQueue = HostedConfiguration.instance().createCompileQueue(debug, featureHandler, hUniverse, runtime, DeoptTester.enabled(), bb.getProviders().getSnippetReflection(),
                                 compilationExecutor);
                 compileQueue.finish(debug);
-                System.out.println("Number of parsed methods: " + CompileQueue.parsedMethods.size());
-                System.out.println("Number of compiled methods: " + CompileQueue.compiledMethods.size());
-// dumpParseTree(compileQueue);
 
                 /* release memory taken by graphs for the image writing */
                 hUniverse.getMethods().forEach(HostedMethod::clear);
@@ -726,21 +720,6 @@ public class NativeImageGenerator {
                 methodSummaryStorage.persistData();
             }
         }
-    }
-
-    void reportBuildArtifacts(String imageName) {
-        Path buildDir = generatedFiles(HostedOptionValues.singleton());
-        Consumer<PrintWriter> writerConsumer = writer -> buildArtifacts.forEach((artifactType, paths) -> {
-            writer.println("[" + artifactType + "]");
-            if (artifactType == BuildArtifacts.ArtifactType.JDK_LIB_SHIM) {
-                writer.println("# Note that shim JDK libraries depend on this");
-                writer.println("# particular native image (including its name)");
-                writer.println("# and therefore cannot be used with others.");
-            }
-            paths.stream().map(Path::toAbsolutePath).map(buildDir::relativize).forEach(writer::println);
-            writer.println();
-        });
-        ReportUtils.report("build artifacts", buildDir.resolve(imageName + ".build_artifacts.txt"), writerConsumer);
     }
 
     @SuppressWarnings("try")
@@ -1070,7 +1049,6 @@ public class NativeImageGenerator {
             registerReplacements(debug, featureHandler, null, aProviders, true, initForeignCalls);
 
             Collection<StructuredGraph> snippetGraphs = aReplacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options);
-            // todo refactor
             if (bb instanceof NativeImagePointsToAnalysis) {
                 for (StructuredGraph graph : snippetGraphs) {
                     HostedConfiguration.instance().createMethodTypeFlowBuilder(((NativeImagePointsToAnalysis) bb), graph).registerUsedElements(false);

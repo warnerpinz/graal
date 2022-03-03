@@ -195,8 +195,6 @@ public class HostedConfiguration {
                 return new StaticAnalysisResultsBuilder(pointsToAnalysis, universe);
             }
         } else {
-            /*- A custom result builder for Reachability analysis will probably have to be created */
-            // todo better profiles?
             return new DummyResultsBuilder(bb, universe);
         }
     }
