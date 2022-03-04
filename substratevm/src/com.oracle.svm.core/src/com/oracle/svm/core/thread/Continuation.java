@@ -32,11 +32,13 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.StubCallingConvention;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationImpl;
+import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.util.VMError;
@@ -101,6 +103,8 @@ public final class Continuation {
         }
         try {
             enter0(this, isContinue);
+        } catch (StackOverflowError e) {
+            throw (e == ImplicitExceptions.CACHED_STACK_OVERFLOW_ERROR) ? new StackOverflowError() : e;
         } finally {
             Unsafe.getUnsafe().storeFence();
 
@@ -133,13 +137,14 @@ public final class Continuation {
             assert this.stored != null;
             assert this.ip.isNonNull();
 
-            byte[] buf = StoredContinuationImpl.allocateBuf(this.stored);
-            StoredContinuationImpl.writeBuf(this.stored, buf);
-
-            // TODO: this is lacking stack overflow checks.
-            for (int i = 0; i < buf.length; i++) {
-                currentSP.writeByte(i - buf.length, buf[i]);
+            int totalSize = StoredContinuationImpl.readAllFrameSize(stored);
+            Pointer topSP = currentSP.subtract(totalSize);
+            if (!StackOverflowCheck.singleton().isWithinBounds(topSP)) {
+                throw ImplicitExceptions.CACHED_STACK_OVERFLOW_ERROR;
             }
+
+            Pointer frameStart = StoredContinuationImpl.payloadFrameStart(stored);
+            UnmanagedMemoryUtil.copy(frameStart, topSP, WordFactory.unsigned(totalSize));
 
             CodePointer storedIP = this.ip;
 
@@ -147,7 +152,7 @@ public final class Continuation {
             this.ip = callerIP;
             this.sp = callerSP;
             this.bottomSP = currentSP;
-            KnownIntrinsics.farReturn(0, currentSP.subtract(buf.length), storedIP, false);
+            KnownIntrinsics.farReturn(0, topSP, storedIP, false);
             throw VMError.shouldNotReachHere();
 
         } else {
