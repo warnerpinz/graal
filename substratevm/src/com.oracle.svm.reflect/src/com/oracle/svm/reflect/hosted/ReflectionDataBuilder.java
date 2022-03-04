@@ -73,7 +73,6 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
-import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ModuleSupport;
@@ -136,12 +135,15 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     private void registerMethods(boolean queriedOnly, Executable[] methods) {
         for (Executable method : methods) {
-            if (reflectionMethods.containsKey(method) && reflectionMethods.get(method) == ExecutableAccessibility.Accessed) {
-                /* Do not downgrade a method already registered as accessed */
-                continue;
-            }
-            ExecutableAccessibility newValue = queriedOnly ? ExecutableAccessibility.QueriedOnly : ExecutableAccessibility.Accessed;
-            ExecutableAccessibility oldValue = reflectionMethods.put(method, newValue);
+            ExecutableAccessibility oldValue;
+            ExecutableAccessibility newValue;
+            do {
+                newValue = queriedOnly ? ExecutableAccessibility.QueriedOnly : ExecutableAccessibility.Accessed;
+                oldValue = reflectionMethods.get(method);
+                if (oldValue != null) {
+                    newValue = ExecutableAccessibility.max(oldValue, newValue);
+                }
+            } while (oldValue == null ? reflectionMethods.putIfAbsent(method, newValue) != null : !reflectionMethods.replace(method, oldValue, newValue));
             if (oldValue != newValue) {
                 modifiedClasses.add(method.getDeclaringClass());
             }
@@ -463,6 +465,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         for (JavaType paramType : analysisMethod.toParameterTypes()) {
             makeAnalysisTypeReachable(access, (AnalysisType) paramType);
         }
+        makeAnalysisTypeReachable(access, (AnalysisType) analysisMethod.getSignature().getReturnType(null));
     }
 
     private void makeTypeReachable(DuringAnalysisAccessImpl access, Type type) {
@@ -472,10 +475,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             }
         } catch (TypeNotPresentException e) {
             /* Hash code computation can trigger an exception if the type is missing */
-            if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
-                return;
-            }
-            throw e;
+            return;
         }
         processedTypes.add(type);
         if (type instanceof Class<?> && !SubstitutionReflectivityFilter.shouldExclude((Class<?>) type, access.getMetaAccess(), access.getUniverse())) {
@@ -524,11 +524,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
     }
 
-    private static void registerTypesForAnnotation(DuringAnalysisAccessImpl accessImpl, Annotation annotation) {
-        /*
-         * Don't make annotation types reachable unless they have a chance of being queried.
-         */
-        accessImpl.registerReachabilityHandler((access) -> registerTypesForAnnotationValue((DuringAnalysisAccessImpl) access, annotation.annotationType(), annotation), annotation.annotationType());
+    private static void registerTypesForAnnotation(DuringAnalysisAccessImpl access, Annotation annotation) {
+        registerTypesForAnnotationValue(access, annotation.annotationType(), annotation);
     }
 
     @SuppressWarnings("unchecked")
@@ -813,6 +810,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     private enum ExecutableAccessibility {
         QueriedOnly,
-        Accessed
+        Accessed;
+
+        static ExecutableAccessibility max(ExecutableAccessibility a, ExecutableAccessibility b) {
+            return a == Accessed || b == Accessed ? Accessed : QueriedOnly;
+        }
     }
 }

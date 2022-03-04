@@ -33,7 +33,7 @@ import java.lang.reflect.Parameter;
 import com.oracle.svm.core.hub.DynamicHub;
 
 public interface ReflectionMetadataDecoder {
-    int NULL_ARRAY = -1;
+    int NO_DATA = -1;
 
     Field[] parseFields(DynamicHub declaringType, int index, boolean publicOnly, boolean reflectOnly);
 

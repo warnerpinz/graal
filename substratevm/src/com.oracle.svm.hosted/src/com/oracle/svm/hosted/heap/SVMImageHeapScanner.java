@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.heap;
 
 import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.util.function.Consumer;
 
@@ -60,6 +61,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     private final Class<?> economicMapImpl;
     private final Field economicMapImplEntriesField;
     private final Field economicMapImplHashArrayField;
+    private final RuntimeReflectionSupport reflectionSupport;
 
     public SVMImageHeapScanner(ImageHeap imageHeap, ImageClassLoader loader, AnalysisMetaAccess metaAccess,
                     SnippetReflectionProvider snippetReflection, ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver) {
@@ -69,6 +71,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
         economicMapImplEntriesField = ReflectionUtil.lookupField(economicMapImpl, "entries");
         economicMapImplHashArrayField = ReflectionUtil.lookupField(economicMapImpl, "hashArray");
         ImageSingletons.add(ImageHeapScanner.class, this);
+        reflectionSupport = ImageSingletons.lookup(RuntimeReflectionSupport.class);
     }
 
     public static ImageHeapScanner instance() {
@@ -143,8 +146,8 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
         super.onObjectReachable(imageHeapObject);
 
         Object object = SubstrateObjectConstant.asObject(imageHeapObject.getObject());
-        if (object instanceof AccessibleObject) {
-            ImageSingletons.lookup(RuntimeReflectionSupport.class).registerHeapReflectionObject((AccessibleObject) object);
+        if (object instanceof Field || object instanceof Executable) {
+            reflectionSupport.registerHeapReflectionObject((AccessibleObject) object);
         }
     }
 }
