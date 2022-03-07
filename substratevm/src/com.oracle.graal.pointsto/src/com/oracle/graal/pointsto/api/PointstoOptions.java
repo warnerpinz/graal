@@ -155,7 +155,7 @@ public class PointstoOptions {
      * <p/>
      * 2obj1h - 2 object sensitive with a 1 context sensitive heap
      */
-    @Option(help = "Controls the static analysis context sensitivity. Available valuProgressReporteres: insens (context insensitive analysis), allocsens (context insensitive analysis, context insensitive heap, allocation site sensitive heap), " +
+    @Option(help = "Controls the static analysis context sensitivity. Available values: insens (context insensitive analysis), allocsens (context insensitive analysis, context insensitive heap, allocation site sensitive heap), " +
                     "_1obj (1 object sensitive analysis with a context insensitive heap), _2obj1h (2 object sensitive with a 1 context sensitive heap)")//
     public static final OptionKey<String> AnalysisContextSensitivity = new OptionKey<>("insens") {
         @Override

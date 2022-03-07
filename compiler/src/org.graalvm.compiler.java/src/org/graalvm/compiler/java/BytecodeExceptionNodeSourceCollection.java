@@ -24,12 +24,13 @@
  */
 package org.graalvm.compiler.java;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
+import org.graalvm.compiler.nodes.java.InstanceOfNode;
 
 import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -37,7 +38,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class BytecodeExceptionNodeSourceCollection {
 
     private static final ConcurrentLinkedQueue<NodeSourcePosition> originals = new ConcurrentLinkedQueue<>();
-    private static final ConcurrentLinkedQueue<NodeSourcePosition> exceptionObjectsSourcePosition = new ConcurrentLinkedQueue<>();
+    private static final ConcurrentLinkedQueue<NodeSourcePosition> exceptionObjects = new ConcurrentLinkedQueue<>();
+    private static final ConcurrentLinkedQueue<NodeSourcePosition> invokes = new ConcurrentLinkedQueue<>();
+    private static final ConcurrentLinkedQueue<NodeSourcePosition> instanceOf = new ConcurrentLinkedQueue<>();
 
     public void collect(StructuredGraph graph) {
         for (Node node : graph.getNodes()) {
@@ -48,7 +51,17 @@ public class BytecodeExceptionNodeSourceCollection {
                  * These source positions are also important because ExceptionObjectNode is the
                  * entry to an exception handler with the exception coming from a call.
                  */
-                exceptionObjectsSourcePosition.add(node.getNodeSourcePosition());
+                exceptionObjects.add(node.getNodeSourcePosition());
+            } else if (node instanceof InvokeNode) {
+                /*
+                 * Bytecode exception can replace invoke node.
+                 */
+                invokes.add(node.getNodeSourcePosition());
+            } else if (node instanceof InstanceOfNode) {
+                /*
+                 * A Java instanceof test can produce bytecode exception.
+                 */
+                instanceOf.add(node.getNodeSourcePosition());
             }
         }
     }
@@ -59,23 +72,6 @@ public class BytecodeExceptionNodeSourceCollection {
 
     public static boolean isOriginal(NodeSourcePosition nodeSourcePosition) {
         return originals.contains(nodeSourcePosition);
-    }
-
-    private static boolean isExceptionObjectPosition(NodeSourcePosition nodeSourcePosition) {
-        return exceptionObjectsSourcePosition.contains(nodeSourcePosition);
-    }
-
-    private static NodeSourcePosition getRootNodeSourcePosition(NodeSourcePosition nodeSourcePosition) {
-        ResolvedJavaMethod rootMethod = nodeSourcePosition.getRootMethod();
-        return new NodeSourcePosition(nodeSourcePosition.getSourceLanguage(), null, rootMethod, getRootBci(nodeSourcePosition));
-    }
-
-    private static int getRootBci(NodeSourcePosition nodeSourcePosition) {
-        NodeSourcePosition cur = nodeSourcePosition;
-        while (cur.getCaller() != null) {
-            cur = cur.getCaller();
-        }
-        return cur.getBCI();
     }
 
     private static boolean equals(NodeSourcePosition position1, NodeSourcePosition position2) {
@@ -119,8 +115,8 @@ public class BytecodeExceptionNodeSourceCollection {
         return position1 == null && position2 == null;
     }
 
-    public static boolean hasOriginalPrefix(NodeSourcePosition nodeSourcePosition) {
-        for (NodeSourcePosition org : originals) {
+    private static boolean isPrefix(NodeSourcePosition nodeSourcePosition, ConcurrentLinkedQueue<NodeSourcePosition> nodeSourcePositionCollection) {
+        for (NodeSourcePosition org : nodeSourcePositionCollection) {
             if (foundPrefix(org, nodeSourcePosition)) {
                 return true;
             }
@@ -128,12 +124,8 @@ public class BytecodeExceptionNodeSourceCollection {
         return false;
     }
 
-    public static boolean hasOriginalRoot(NodeSourcePosition nodeSourcePosition) {
-        return isOriginal(getRootNodeSourcePosition(nodeSourcePosition));
-    }
-
-    private static boolean hasExceptionObjectPositionSufix(NodeSourcePosition nodeSourcePosition) {
-        for (NodeSourcePosition org : exceptionObjectsSourcePosition) {
+    private static boolean isSuffix(NodeSourcePosition nodeSourcePosition, ConcurrentLinkedQueue<NodeSourcePosition> nodeSourcePositionCollection) {
+        for (NodeSourcePosition org : nodeSourcePositionCollection) {
             if (foundSuffix(org, nodeSourcePosition)) {
                 return true;
             }
@@ -141,7 +133,29 @@ public class BytecodeExceptionNodeSourceCollection {
         return false;
     }
 
-    public static boolean hasRootFromExceptionObject(NodeSourcePosition nodeSourcePosition) {
-        return isExceptionObjectPosition(getRootNodeSourcePosition(nodeSourcePosition)) || hasExceptionObjectPositionSufix(nodeSourcePosition);
+    public static boolean hasOriginalRoot(NodeSourcePosition nodeSourcePosition) {
+        /*
+         * Root also can be inlined, so we check for any suffix.
+         */
+        return isSuffix(nodeSourcePosition, originals);
+    }
+
+    public static boolean hasOriginalPrefix(NodeSourcePosition nodeSourcePosition) {
+        /*
+         * Check if this node source position came from inlining some original.
+         */
+        return isPrefix(nodeSourcePosition, originals);
+    }
+
+    public static boolean comingFromInvoke(NodeSourcePosition nodeSourcePosition) {
+        return isPrefix(nodeSourcePosition, invokes) || isSuffix(nodeSourcePosition, invokes);
+    }
+
+    public static boolean comingFromExceptionObject(NodeSourcePosition nodeSourcePosition) {
+        return isPrefix(nodeSourcePosition, exceptionObjects) || isSuffix(nodeSourcePosition, exceptionObjects);
+    }
+
+    public static boolean comingFromInstanceOf(NodeSourcePosition nodeSourcePosition) {
+        return isPrefix(nodeSourcePosition, instanceOf) || isSuffix(nodeSourcePosition, instanceOf);
     }
 }

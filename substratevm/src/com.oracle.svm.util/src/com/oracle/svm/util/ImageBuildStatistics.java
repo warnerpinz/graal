@@ -114,13 +114,21 @@ public class ImageBuildStatistics {
                      * occurred after something inlined.
                      */
                 } else {
-                    if (BytecodeExceptionNodeSourceCollection.hasRootFromExceptionObject(nodeSourcePosition)) {
+                    if (BytecodeExceptionNodeSourceCollection.comingFromExceptionObject(nodeSourcePosition)) {
                         /*
                          * This node source position is from exception coming from a call.
                          */
                     } else if (BytecodeExceptionNodeSourceCollection.hasOriginalRoot(nodeSourcePosition)) {
                         /*
                          * This node source position is coming from a virtual call.
+                         */
+                    } else if (BytecodeExceptionNodeSourceCollection.comingFromInvoke(nodeSourcePosition)) {
+                        /*
+                         * This node source position is replacement for invoke node.
+                         */
+                    } else if (BytecodeExceptionNodeSourceCollection.comingFromInstanceOf(nodeSourcePosition)) {
+                        /*
+                         * This node source position is coming from instance of node.
                          */
                     } else {
                         throw GraalError.shouldNotReachHere("Found new node " + nodeSourcePosition + " after bytecode parsing in graph for " + method.format("%h.%n(%p)"));
