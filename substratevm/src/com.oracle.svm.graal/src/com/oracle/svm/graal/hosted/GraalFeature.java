@@ -576,7 +576,6 @@ public final class GraalFeature implements Feature {
         callTargets.sort((t1, t2) -> Integer.compare(t1.invoke().bci(), t2.invoke().bci()));
 
         for (MethodCallTargetNode targetNode : callTargets) {
-            // todo(d-kozak) create proper abstraction
             AnalysisMethod targetMethod = (AnalysisMethod) targetNode.targetMethod();
             ResolvedJavaMethod callerMethod = targetNode.invoke().stateAfter().getMethod();
             Collection<AnalysisMethod> allImplementationMethods;

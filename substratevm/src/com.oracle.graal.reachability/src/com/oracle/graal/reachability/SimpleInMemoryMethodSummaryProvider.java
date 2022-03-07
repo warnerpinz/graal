@@ -189,7 +189,7 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                         continue;
                     }
                     if (invokeInfos != null) {
-                        invokeInfos.add(new ReachabilityInvokeInfo(targetMethod, node.asFixedNode().getNodeSourcePosition(), kind.isDirect()));
+                        invokeInfos.add(new ReachabilityInvokeInfo(((ReachabilityAnalysisMethod) targetMethod), node.asFixedNode().getNodeSourcePosition(), kind.isDirect()));
                     }
                     if (kind.isDirect()) {
                         implementationInvokedMethods.add(targetMethod);

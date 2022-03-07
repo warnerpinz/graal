@@ -27,13 +27,13 @@ package com.oracle.graal.reachability;
 import com.oracle.graal.pointsto.AbstractReachabilityAnalysis;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
-import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.InvokeReason;
+import com.oracle.graal.pointsto.meta.ReachabilityAnalysisType;
 import com.oracle.graal.pointsto.meta.Reason;
 import com.oracle.graal.pointsto.meta.RootMethodReason;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -44,7 +44,6 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
@@ -147,7 +146,6 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
 
     @SuppressWarnings("try")
     private void onMethodImplementationInvoked(AnalysisMethod m) {
-        markMethodSignatureReachable(m);
         ReachabilityAnalysisMethod method = assertReachabilityAnalysisMethod(m);
         try {
             MethodSummary summary;
@@ -156,7 +154,6 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
             }
             // System.out.println("\t##" + method + " : " + summary);
             processSummary(method, summary);
-            method.setSummary(summary);
             summaries.put(method, summary);
         } catch (Throwable ex) {
             System.err.println("Failed to provide a summary for " + method.format("%H.%n(%p)"));
@@ -247,7 +244,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
 
     private void onTypeInstantiated(AnalysisType type) {
         type.forAllSuperTypes(current -> {
-            Set<AnalysisMethod> invokedMethods = current.getInvokedMethods();
+            Set<AnalysisMethod> invokedMethods = ((ReachabilityAnalysisType) current).getInvokedMethods();
             for (AnalysisMethod method : invokedMethods) {
                 if (method.isStatic()) {
                     continue;
@@ -270,8 +267,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
     }
 
     private void onMethodInvoked(AnalysisMethod method, Reason reason) {
-        AnalysisType clazz = method.getDeclaringClass();
-        markMethodSignatureReachable(method);
+        ReachabilityAnalysisType clazz = ((ReachabilityAnalysisType) method.getDeclaringClass());
         Set<AnalysisType> instantiatedSubtypes = clazz.getInstantiatedSubtypes();
         if (method.isStatic()) {
             markMethodImplementationInvoked(assertReachabilityAnalysisMethod(method), null);
@@ -284,25 +280,6 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
             }
             markMethodImplementationInvoked(assertReachabilityAnalysisMethod(resolvedMethod), new InvokeReason(reason, method, CallTargetNode.InvokeKind.Virtual));
         }
-    }
-
-    private void markMethodSignatureReachable(AnalysisMethod method) {
-        if (true) {
-            // todo remove this method totally?
-            return;
-        }
-        WrappedSignature signature = method.getSignature();
-        AnalysisType returnType = analysisType(signature.getReturnType(null));
-        markTypeReachable(returnType);
-        int parameterCount = signature.getParameterCount(false);
-        for (int i = 0; i < parameterCount; i++) {
-            AnalysisType paramType = analysisType(signature.getParameterType(i, null));
-            markTypeReachable(paramType);
-        }
-    }
-
-    private AnalysisType analysisType(JavaType type) {
-        return type instanceof AnalysisType ? ((AnalysisType) type) : universe.lookup(type);
     }
 
     @Override

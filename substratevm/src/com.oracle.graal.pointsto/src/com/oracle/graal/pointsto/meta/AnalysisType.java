@@ -107,9 +107,6 @@ public abstract class AnalysisType implements WrappedJavaType, OriginalClassProv
     private final Set<AnalysisType> subTypes;
     AnalysisType superClass;
 
-    private final Set<AnalysisType> instantiatedSubtypes = ConcurrentHashMap.newKeySet();
-    private final Set<AnalysisMethod> invokedMethods = ConcurrentHashMap.newKeySet();
-
     private final int id;
 
     private final JavaKind storageKind;
@@ -423,7 +420,6 @@ public abstract class AnalysisType implements WrappedJavaType, OriginalClassProv
     public boolean registerAsInHeap() {
         registerAsReachable();
         if (AtomicUtils.atomicMark(isInHeap)) {
-            registerAsInstantiated(UsageKind.InHeap);
             universe.onTypeInstantiated(this, UsageKind.InHeap);
             return true;
         }
@@ -436,36 +432,13 @@ public abstract class AnalysisType implements WrappedJavaType, OriginalClassProv
     public boolean registerAsAllocated(Node node) {
         registerAsReachable();
         if (AtomicUtils.atomicMark(isAllocated)) {
-            registerAsInstantiated(UsageKind.Allocated);
             universe.onTypeInstantiated(this, UsageKind.Allocated);
             return true;
         }
         return false;
     }
 
-    /** Register the type as instantiated with all its super types. */
-    private void registerAsInstantiated(UsageKind usageKind) {
-        forAllSuperTypes(t -> t.instantiatedSubtypes.add(this));
-    }
-
-    /**
-     * Register the type as assignable with all its super types. This is a blocking call to ensure
-     * that the type is registered with all its super types before it is propagated by the analysis
-     * through type flows.
-     */
     public void registerAsAssignable(BigBang bb) {
-        // todo refactor
-        if (!(bb instanceof PointsToAnalysis)) {
-            return;
-        }
-        TypeState typeState = TypeState.forType(((PointsToAnalysis) bb), this, true);
-        /*
-         * Register the assignable type with its super types. Skip this type, it can lead to a
-         * deadlock when this is called when the type is created.
-         */
-        forAllSuperTypes(t -> t.addAssignableType(bb, typeState), false);
-        /* Register the type as assignable to itself. */
-        this.addAssignableType(bb, typeState);
     }
 
     public boolean registerAsReachable() {
@@ -516,7 +489,7 @@ public abstract class AnalysisType implements WrappedJavaType, OriginalClassProv
         forAllSuperTypes(superTypeConsumer, true);
     }
 
-    private void forAllSuperTypes(Consumer<AnalysisType> superTypeConsumer, boolean includeThisType) {
+    protected void forAllSuperTypes(Consumer<AnalysisType> superTypeConsumer, boolean includeThisType) {
         forAllSuperTypes(elementalType, dimension, includeThisType, superTypeConsumer);
         for (int i = 0; i < dimension; i++) {
             forAllSuperTypes(this, i, false, superTypeConsumer);
@@ -539,7 +512,7 @@ public abstract class AnalysisType implements WrappedJavaType, OriginalClassProv
         forAllSuperTypes(elementType.getSuperclass(), arrayDimension, true, superTypeConsumer);
     }
 
-    private synchronized void addAssignableType(BigBang bb, TypeState typeState) {
+    protected synchronized void addAssignableType(BigBang bb, TypeState typeState) {
         assignableTypesState = TypeState.forUnion(((PointsToAnalysis) bb), assignableTypesState, typeState);
         assignableTypesNonNullState = assignableTypesState.forNonNull(((PointsToAnalysis) bb));
     }
@@ -791,21 +764,7 @@ public abstract class AnalysisType implements WrappedJavaType, OriginalClassProv
 
     @Override
     public boolean isAssignableFrom(ResolvedJavaType other) {
-        AnalysisType analysisOther;
-        if (other instanceof AnalysisType) {
-            analysisOther = ((AnalysisType) other);
-        } else if (other instanceof WrappedJavaType) {
-            // might be a HostedType, which is not accessible here, but implements WrappedJavaType
-            WrappedJavaType wrapped = (WrappedJavaType) other;
-            if (wrapped.getWrapped() instanceof AnalysisType) {
-                analysisOther = ((AnalysisType) wrapped.getWrapped());
-            } else {
-                analysisOther = universe.lookup(other);
-            }
-        } else {
-            analysisOther = universe.lookup(other);
-        }
-        ResolvedJavaType subst = universe.substitutions.resolve(analysisOther.wrapped);
+        ResolvedJavaType subst = universe.substitutions.resolve(((AnalysisType) other).wrapped);
         return wrapped.isAssignableFrom(subst);
     }
 
@@ -1162,13 +1121,5 @@ public abstract class AnalysisType implements WrappedJavaType, OriginalClassProv
 
     public interface InstanceFieldsInterceptor {
         ResolvedJavaField[] interceptInstanceFields(AnalysisUniverse universe, ResolvedJavaField[] fields, AnalysisType type);
-    }
-
-    public Set<AnalysisType> getInstantiatedSubtypes() {
-        return instantiatedSubtypes;
-    }
-
-    public Set<AnalysisMethod> getInvokedMethods() {
-        return invokedMethods;
     }
 }

@@ -43,7 +43,7 @@ public class PointsToAnalysisField extends AnalysisField {
      */
     private final AtomicReference<StoreInstanceFieldTypeFlow> contextInsensitiveStore = new AtomicReference<>();
 
-    public PointsToAnalysisField(AnalysisUniverse universe, ResolvedJavaField wrapped) {
+    PointsToAnalysisField(AnalysisUniverse universe, ResolvedJavaField wrapped) {
         super(universe, wrapped);
     }
 

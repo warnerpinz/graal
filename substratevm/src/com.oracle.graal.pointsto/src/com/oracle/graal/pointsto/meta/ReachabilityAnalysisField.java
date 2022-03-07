@@ -22,33 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.reachability;
+package com.oracle.graal.pointsto.meta;
 
-import com.oracle.graal.pointsto.meta.AnalysisFactory;
-import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.meta.ReachabilityAnalysisField;
-import com.oracle.graal.pointsto.meta.ReachabilityAnalysisType;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class ReachabilityAnalysisFactory implements AnalysisFactory {
-    @Override
-    public AnalysisMethod createMethod(AnalysisUniverse universe, ResolvedJavaMethod method) {
-        return new ReachabilityAnalysisMethod(universe, method);
-    }
+public class ReachabilityAnalysisField extends AnalysisField {
 
-    @Override
-    public AnalysisField createField(AnalysisUniverse universe, ResolvedJavaField field) {
-        return new ReachabilityAnalysisField(universe, field);
-    }
-
-    @Override
-    public AnalysisType createType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
-        return new ReachabilityAnalysisType(universe, javaType, storageKind, objectType, cloneableType);
+    public ReachabilityAnalysisField(AnalysisUniverse universe, ResolvedJavaField wrappedField) {
+        super(universe, wrappedField);
     }
 }

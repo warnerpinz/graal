@@ -26,10 +26,12 @@ package com.oracle.graal.pointsto.meta;
 
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.StoreIndexedTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.UnsafeStoreTypeFlow;
+import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -52,6 +54,22 @@ public class PointsToAnalysisType extends AnalysisType {
 
     public PointsToAnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
         super(universe, javaType, storageKind, objectType, cloneableType);
+    }
+
+    /**
+     * Register the type as assignable with all its super types. This is a blocking call to ensure
+     * that the type is registered with all its super types before it is propagated by the analysis
+     * through type flows.
+     */
+    public void registerAsAssignable(BigBang bb) {
+        TypeState typeState = TypeState.forType(((PointsToAnalysis) bb), this, true);
+        /*
+         * Register the assignable type with its super types. Skip this type, it can lead to a
+         * deadlock when this is called when the type is created.
+         */
+        forAllSuperTypes(t -> t.addAssignableType(bb, typeState), false);
+        /* Register the type as assignable to itself. */
+        this.addAssignableType(bb, typeState);
     }
 
     public UnsafeStoreTypeFlow initAndGetContextInsensitiveUnsafeStore(PointsToAnalysis bb, BytecodePosition originalLocation) {

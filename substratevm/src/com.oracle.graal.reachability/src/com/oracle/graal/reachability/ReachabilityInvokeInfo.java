@@ -34,11 +34,11 @@ import java.util.stream.Collectors;
 
 public class ReachabilityInvokeInfo implements InvokeInfo {
 
-    private final AnalysisMethod targetMethod;
+    private final ReachabilityAnalysisMethod targetMethod;
     private final BytecodePosition position;
     private final boolean isDirectInvoke;
 
-    public ReachabilityInvokeInfo(AnalysisMethod targetMethod, BytecodePosition position, boolean isDirectInvoke) {
+    public ReachabilityInvokeInfo(ReachabilityAnalysisMethod targetMethod, BytecodePosition position, boolean isDirectInvoke) {
         this.targetMethod = targetMethod;
         this.position = position;
         this.isDirectInvoke = isDirectInvoke;
