@@ -32,10 +32,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.meta.InvokeReason;
 import com.oracle.graal.pointsto.meta.ReachabilityAnalysisType;
-import com.oracle.graal.pointsto.meta.Reason;
-import com.oracle.graal.pointsto.meta.RootMethodReason;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
@@ -50,7 +47,6 @@ import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCall;
@@ -127,15 +123,15 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
             markTypeInstantiated(method.getDeclaringClass());
         }
         method.registerAsInvoked();
-        markMethodImplementationInvoked(assertReachabilityAnalysisMethod(method), new RootMethodReason());
+        markMethodImplementationInvoked(assertReachabilityAnalysisMethod(method));
         return method;
     }
 
-    private ReachabilityAnalysisMethod assertReachabilityAnalysisMethod(AnalysisMethod method) {
+    private static ReachabilityAnalysisMethod assertReachabilityAnalysisMethod(AnalysisMethod method) {
         return (ReachabilityAnalysisMethod) method;
     }
 
-    private void markMethodImplementationInvoked(ReachabilityAnalysisMethod method, Reason reason) {
+    private void markMethodImplementationInvoked(ReachabilityAnalysisMethod method) {
         if (!method.registerAsImplementationInvoked()) {
             return;
         }
@@ -158,19 +154,17 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         } catch (Throwable ex) {
             System.err.println("Failed to provide a summary for " + method.format("%H.%n(%p)"));
             System.err.println(ex + " " + ex.getMessage());
-            System.err.println("Parsing reason: " + method.getReason());
             ex.printStackTrace();
         }
     }
 
     private void processSummary(ReachabilityAnalysisMethod method, MethodSummary summary) {
         for (AnalysisMethod invokedMethod : summary.invokedMethods) {
-            markMethodInvoked(invokedMethod, new InvokeReason(method.getReason(), method, CallTargetNode.InvokeKind.Virtual));
+            markMethodInvoked(invokedMethod);
         }
         for (AnalysisMethod invokedMethod : summary.implementationInvokedMethods) {
-            InvokeReason reason = new InvokeReason(method.getReason(), method, CallTargetNode.InvokeKind.Static);
-            markMethodInvoked(invokedMethod, reason);
-            markMethodImplementationInvoked(assertReachabilityAnalysisMethod(invokedMethod), reason);
+            markMethodInvoked(invokedMethod);
+            markMethodImplementationInvoked(assertReachabilityAnalysisMethod(invokedMethod));
         }
         for (AnalysisType type : summary.accessedTypes) {
             markTypeReachable(type);
@@ -186,8 +180,6 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         }
         for (JavaConstant constant : summary.embeddedConstants) {
             if (constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
-                // todo heap initiate scanning
-                // track the constant
                 if (this.scanningPolicy().trackConstant(this, constant)) {
                     BytecodePosition position = new BytecodePosition(null, method, 0);
                     getUniverse().registerEmbeddedRoot(constant, position);
@@ -223,7 +215,6 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
 
     @Override
     public boolean markTypeReachable(AnalysisType type) {
-        // todo double check whether all necessary logic is in
         return type.registerAsReachable();
     }
 
@@ -253,24 +244,23 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
                 if (implementationInvokedMethod == null) {
                     continue;
                 }
-                markMethodImplementationInvoked(assertReachabilityAnalysisMethod(implementationInvokedMethod),
-                                new InvokeReason(((ReachabilityAnalysisMethod) method).getReason(), method, CallTargetNode.InvokeKind.Virtual));
+                markMethodImplementationInvoked(assertReachabilityAnalysisMethod(implementationInvokedMethod));
             }
         });
     }
 
-    private void markMethodInvoked(AnalysisMethod method, Reason reason) {
+    private void markMethodInvoked(AnalysisMethod method) {
         if (!method.registerAsInvoked()) {
             return;
         }
-        schedule(() -> onMethodInvoked(method, reason));
+        schedule(() -> onMethodInvoked(method));
     }
 
-    private void onMethodInvoked(AnalysisMethod method, Reason reason) {
+    private void onMethodInvoked(AnalysisMethod method) {
         ReachabilityAnalysisType clazz = ((ReachabilityAnalysisType) method.getDeclaringClass());
         Set<AnalysisType> instantiatedSubtypes = clazz.getInstantiatedSubtypes();
         if (method.isStatic()) {
-            markMethodImplementationInvoked(assertReachabilityAnalysisMethod(method), null);
+            markMethodImplementationInvoked(assertReachabilityAnalysisMethod(method));
             return;
         }
         for (AnalysisType subtype : instantiatedSubtypes) {
@@ -278,7 +268,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
             if (resolvedMethod == null) {
                 continue;
             }
-            markMethodImplementationInvoked(assertReachabilityAnalysisMethod(resolvedMethod), new InvokeReason(reason, method, CallTargetNode.InvokeKind.Virtual));
+            markMethodImplementationInvoked(assertReachabilityAnalysisMethod(resolvedMethod));
         }
     }
 
@@ -377,17 +367,14 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
 
     @Override
     public void forceUnsafeUpdate(AnalysisField field) {
-        // todo what to do?
     }
 
     @Override
     public void registerAsJNIAccessed(AnalysisField field, boolean writable) {
-        // todo what to do?
     }
 
     @Override
     public TypeState getAllSynchronizedTypeState() {
-        // todo don't overapproximate so much
         return objectType.getTypeFlow(this, true).getState();
     }
 

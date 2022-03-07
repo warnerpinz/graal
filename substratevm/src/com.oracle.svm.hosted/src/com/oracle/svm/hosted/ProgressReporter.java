@@ -244,6 +244,7 @@ public class ProgressReporter {
             l().a(" ").doclink("C compiler", "#glossary-ccompiler").a(": ").a(ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.getShortDescription()).println();
         }
         l().a(" ").doclink("Garbage collector", "#glossary-gc").a(": ").a(Heap.getHeap().getGC().getName()).println();
+        l().a(" ").doclink("Analysis", "#glossary-analysis").a(": ").a(NativeImageOptions.UseExperimentalReachabilityAnalysis.getValue() ? "Reachability" : "Points-To").println();
         printNativeLibraries(libraries);
     }
 

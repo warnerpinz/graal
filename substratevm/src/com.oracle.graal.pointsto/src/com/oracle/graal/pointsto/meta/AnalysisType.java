@@ -438,6 +438,7 @@ public abstract class AnalysisType implements WrappedJavaType, OriginalClassProv
         return false;
     }
 
+    @SuppressWarnings("unused")
     public void registerAsAssignable(BigBang bb) {
     }
 
@@ -803,8 +804,7 @@ public abstract class AnalysisType implements WrappedJavaType, OriginalClassProv
 
     @Override
     public AnalysisType findLeastCommonAncestor(ResolvedJavaType otherType) {
-        AnalysisType analysisOther = otherType instanceof AnalysisType ? (AnalysisType) otherType : universe.lookup(otherType);
-        ResolvedJavaType subst = universe.substitutions.resolve(analysisOther.wrapped);
+        ResolvedJavaType subst = universe.substitutions.resolve(((AnalysisType) otherType).wrapped);
         return universe.lookup(wrapped.findLeastCommonAncestor(subst));
     }
 

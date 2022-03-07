@@ -52,7 +52,7 @@ public class PointsToAnalysisType extends AnalysisType {
      */
     private final AtomicReference<StoreIndexedTypeFlow> contextInsensitiveIndexedStore = new AtomicReference<>();
 
-    public PointsToAnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
+    PointsToAnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
         super(universe, javaType, storageKind, objectType, cloneableType);
     }
 
@@ -61,6 +61,7 @@ public class PointsToAnalysisType extends AnalysisType {
      * that the type is registered with all its super types before it is propagated by the analysis
      * through type flows.
      */
+    @Override
     public void registerAsAssignable(BigBang bb) {
         TypeState typeState = TypeState.forType(((PointsToAnalysis) bb), this, true);
         /*

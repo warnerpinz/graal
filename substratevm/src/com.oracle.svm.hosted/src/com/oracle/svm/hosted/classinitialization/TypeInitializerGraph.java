@@ -122,7 +122,7 @@ public class TypeInitializerGraph {
     @SuppressWarnings("unused")
     boolean isUnsafe(AnalysisType type) {
         if (NativeImageOptions.UseExperimentalReachabilityAnalysis.getValue()) {
-            return false;
+            return true;
         }
         return types.get(type) == Safety.UNSAFE;
     }
