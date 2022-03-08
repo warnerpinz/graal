@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.java;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.InvokeNode;
@@ -74,6 +75,31 @@ public class BytecodeExceptionNodeSourceCollection {
         return originals.contains(nodeSourcePosition);
     }
 
+    private static boolean isExceptionObjectPosition(NodeSourcePosition nodeSourcePosition) {
+        return exceptionObjects.contains(nodeSourcePosition);
+    }
+
+    private static boolean isInvokePosition(NodeSourcePosition nodeSourcePosition) {
+        return invokes.contains(nodeSourcePosition);
+    }
+
+    private static boolean isInstanceOfPosition(NodeSourcePosition nodeSourcePosition) {
+        return instanceOf.contains(nodeSourcePosition);
+    }
+
+    private static NodeSourcePosition getRootNodeSourcePosition(NodeSourcePosition nodeSourcePosition) {
+        ResolvedJavaMethod rootMethod = nodeSourcePosition.getRootMethod();
+        return new NodeSourcePosition(nodeSourcePosition.getSourceLanguage(), null, rootMethod, getRootBci(nodeSourcePosition));
+    }
+
+    private static int getRootBci(NodeSourcePosition nodeSourcePosition) {
+        NodeSourcePosition cur = nodeSourcePosition;
+        while (cur.getCaller() != null) {
+            cur = cur.getCaller();
+        }
+        return cur.getBCI();
+    }
+
     private static boolean equals(NodeSourcePosition position1, NodeSourcePosition position2) {
         return position1.getBCI() == position2.getBCI() && Objects.equals(position1.getMethod(), position2.getMethod()) &&
                         Objects.equals(position1.getSourceLanguage(), position2.getSourceLanguage());
@@ -115,7 +141,7 @@ public class BytecodeExceptionNodeSourceCollection {
         return position1 == null && position2 == null;
     }
 
-    private static boolean isPrefix(NodeSourcePosition nodeSourcePosition, ConcurrentLinkedQueue<NodeSourcePosition> nodeSourcePositionCollection) {
+    private static boolean hasPrefix(NodeSourcePosition nodeSourcePosition, ConcurrentLinkedQueue<NodeSourcePosition> nodeSourcePositionCollection) {
         for (NodeSourcePosition org : nodeSourcePositionCollection) {
             if (foundPrefix(org, nodeSourcePosition)) {
                 return true;
@@ -124,7 +150,7 @@ public class BytecodeExceptionNodeSourceCollection {
         return false;
     }
 
-    private static boolean isSuffix(NodeSourcePosition nodeSourcePosition, ConcurrentLinkedQueue<NodeSourcePosition> nodeSourcePositionCollection) {
+    private static boolean hasSuffix(NodeSourcePosition nodeSourcePosition, ConcurrentLinkedQueue<NodeSourcePosition> nodeSourcePositionCollection) {
         for (NodeSourcePosition org : nodeSourcePositionCollection) {
             if (foundSuffix(org, nodeSourcePosition)) {
                 return true;
@@ -135,27 +161,27 @@ public class BytecodeExceptionNodeSourceCollection {
 
     public static boolean hasOriginalRoot(NodeSourcePosition nodeSourcePosition) {
         /*
-         * Root also can be inlined, so we check for any suffix.
+         * Root can be inlined, so we also check for suffix.
          */
-        return isSuffix(nodeSourcePosition, originals);
+        return isOriginal(getRootNodeSourcePosition(nodeSourcePosition)) || hasSuffix(nodeSourcePosition, originals);
     }
 
     public static boolean hasOriginalPrefix(NodeSourcePosition nodeSourcePosition) {
         /*
          * Check if this node source position came from inlining some original.
          */
-        return isPrefix(nodeSourcePosition, originals);
+        return hasPrefix(nodeSourcePosition, originals);
     }
 
     public static boolean comingFromInvoke(NodeSourcePosition nodeSourcePosition) {
-        return isPrefix(nodeSourcePosition, invokes) || isSuffix(nodeSourcePosition, invokes);
+        return isInvokePosition(getRootNodeSourcePosition(nodeSourcePosition)) || hasPrefix(nodeSourcePosition, invokes) || hasSuffix(nodeSourcePosition, invokes);
     }
 
     public static boolean comingFromExceptionObject(NodeSourcePosition nodeSourcePosition) {
-        return isPrefix(nodeSourcePosition, exceptionObjects) || isSuffix(nodeSourcePosition, exceptionObjects);
+        return isExceptionObjectPosition(getRootNodeSourcePosition(nodeSourcePosition)) || hasPrefix(nodeSourcePosition, exceptionObjects) || hasSuffix(nodeSourcePosition, exceptionObjects);
     }
 
     public static boolean comingFromInstanceOf(NodeSourcePosition nodeSourcePosition) {
-        return isPrefix(nodeSourcePosition, instanceOf) || isSuffix(nodeSourcePosition, instanceOf);
+        return isInstanceOfPosition(getRootNodeSourcePosition(nodeSourcePosition)) || hasPrefix(nodeSourcePosition, instanceOf) || hasSuffix(nodeSourcePosition, instanceOf);
     }
 }
