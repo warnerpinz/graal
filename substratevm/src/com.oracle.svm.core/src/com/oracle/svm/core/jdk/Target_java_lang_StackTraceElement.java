@@ -32,13 +32,13 @@ import com.oracle.svm.core.annotate.TargetElement;
 
 @TargetClass(StackTraceElement.class)
 final class Target_java_lang_StackTraceElement {
-    @Alias @TargetElement(name = "BUILTIN_CLASS_LOADER")
+    @Alias @TargetElement(name = "BUILTIN_CLASS_LOADER") //
     static byte BuiltInClassLoaderFlag;
 
-    @Alias @InjectAccessors(StackTraceElementFormatAccessors.class)
+    @Alias @InjectAccessors(StackTraceElementFormatAccessors.class) //
     private byte format;
 
-    @Inject
+    @Inject //
     byte injectedFormat = BuiltInClassLoaderFlag;
 }
 
