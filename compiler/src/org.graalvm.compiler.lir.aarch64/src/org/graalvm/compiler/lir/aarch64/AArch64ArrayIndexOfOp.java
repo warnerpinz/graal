@@ -83,7 +83,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
                     AllocatableValue[] searchValues) {
         super(TYPE);
         this.arrayBaseOffset = arrayBaseOffset;
-        this.elementByteSize = getElementByteSize(valueKind);
+        this.elementByteSize = tool.getProviders().getMetaAccess().getArrayIndexScale(valueKind);
         this.findTwoConsecutive = findTwoConsecutive;
         resultValue = result;
         arrayPtrValue = arrayPtr;
@@ -105,19 +105,6 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
         vectorTemp4 = tool.newVariable(vectorKind);
         vectorTemp5 = findTwoConsecutive ? tool.newVariable(vectorKind) : Value.ILLEGAL;
         vectorTemp6 = findTwoConsecutive ? tool.newVariable(vectorKind) : Value.ILLEGAL;
-    }
-
-    private static int getElementByteSize(JavaKind kind) {
-        switch (kind) {
-            case Byte:
-                return 1;
-            case Char:
-                return 2;
-            case Int:
-                return 4;
-            default:
-                throw GraalError.shouldNotReachHere("Unexpected JavaKind");
-        }
     }
 
     private int getShiftSize() {
@@ -289,7 +276,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
          * 'refAddress' pointing to the beginning of the last chunk.
          */
         masm.add(64, searchEnd, baseAddress, arrayLength, ShiftType.LSL, shiftSize);
-        masm.bic(64, refAddress, searchEnd, 31L);
+        masm.sub(64, refAddress, searchEnd, 32);
         /* Set 'chunkToReadAddress' pointing to the chunk from where the search begins. */
         masm.add(64, chunkToReadAddress, baseAddress, fromIndex, ShiftType.LSL, shiftSize);
 
@@ -349,6 +336,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
             masm.cbnz(64, matchReg, matchInChunk);
         }
         /* No match; jump to next loop iteration. */
+        // align address to 32-byte boundary
         masm.bic(64, chunkToReadAddress, chunkToReadAddress, 31);
         masm.jmp(searchByChunkLoopHead);
 

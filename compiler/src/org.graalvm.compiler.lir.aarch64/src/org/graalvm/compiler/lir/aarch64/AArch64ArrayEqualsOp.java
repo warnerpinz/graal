@@ -128,7 +128,7 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
             int shiftAmt = NumUtil.log2Ceil(arrayIndexScale);
             masm.lsl(64, byteArrayLength, asRegister(lengthValue), shiftAmt);
             masm.compare(32, asRegister(lengthValue), 32 / arrayIndexScale);
-            masm.branchConditionally(ConditionFlag.LS, scalarCompare);
+            masm.branchConditionally(ConditionFlag.LE, scalarCompare);
 
             emitSIMDCompare(masm, byteArrayLength, hasMismatch, scratch, breakLabel);
 
@@ -311,7 +311,6 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         Label compareByChunkTail = new Label();
         Label processTail = new Label();
 
-        masm.mov(64, hasMismatch, zr);
         /* 1. Set 'array1Address' and 'array2Address' to point to start of arrays. */
         loadArrayStart(masm, array1Address, array2Address);
         /*
@@ -345,6 +344,12 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         masm.cbnz(64, hasMismatch, endLabel);
 
         /* 5. No mismatch; jump to next loop iteration. */
+        // align array1Address to 32-byte boundary
+        // determine how much to subtract from array2Address to match aligned array1Address
+        Register array1Alignment = asRegister(resultValue);
+        masm.and(64, array1Alignment, array1Address, 31);
+        masm.sub(64, array2Address, array2Address, array1Alignment);
+        masm.bic(64, array1Address, array1Address, 31);
         masm.jmp(compareByChunkHead);
 
         masm.align(16);
