@@ -1163,8 +1163,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             if (other.rootMethod != null) {
                 methods.add(other.rootMethod);
             }
-            for (ResolvedJavaMethod m : other.methods) {
-                methods.add(m);
+            if (other.methods != null) {
+                for (ResolvedJavaMethod m : other.methods) {
+                    methods.add(m);
+                }
             }
         }
     }

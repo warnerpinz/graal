@@ -837,11 +837,15 @@ public class CompileQueue {
         fun.parse(debug, task.method, task.reason, runtimeConfig);
     }
 
-    private StructuredGraph transplantGraph(DebugContext debug, HostedMethod hMethod, CompileReason reason) {
+    private StructuredGraph transplantGraph(DebugContext debug, HostedMethod hMethod, CompileReason reason, HostedProviders providers) {
         AnalysisMethod aMethod = hMethod.getWrapped();
         StructuredGraph aGraph = aMethod.getAnalyzedGraph();
         if (aGraph == null) {
-            throw VMError.shouldNotReachHere("Method not parsed during static analysis: " + aMethod.format("%r %H.%n(%p)") + ". Reachable from: " + reason);
+            // todo just for Spring
+            System.err.println("Fixing method " + hMethod);
+            aGraph = DeletedMethod.buildGraph(debug, hMethod, providers, DeletedMethod.NATIVE_MESSAGE);
+// throw VMError.shouldNotReachHere("Method not parsed during static analysis: " +
+// aMethod.format("%r %H.%n(%p)") + ". Reachable from: " + reason);
         }
 
         /*
@@ -1083,7 +1087,7 @@ public class CompileQueue {
 
         StructuredGraph graph;
         if (parseOnce) {
-            graph = transplantGraph(debug, method, reason);
+            graph = transplantGraph(debug, method, reason, providers);
         } else {
             graph = method.buildGraph(debug, method, providers, Purpose.AOT_COMPILATION);
             if (graph == null) {

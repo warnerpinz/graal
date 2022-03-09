@@ -329,6 +329,9 @@ public class HostedUniverse implements Universe {
 
     @Override
     public HostedType lookup(JavaType type) {
+        if (type instanceof HostedType) {
+            return ((HostedType) type);
+        }
         JavaType result = lookupAllowUnresolved(type);
         if (result instanceof ResolvedJavaType) {
             return (HostedType) result;
@@ -351,6 +354,9 @@ public class HostedUniverse implements Universe {
 
     @Override
     public HostedField lookup(JavaField field) {
+        if (field instanceof HostedField) {
+            return ((HostedField) field);
+        }
         JavaField result = lookupAllowUnresolved(field);
         if (result instanceof ResolvedJavaField) {
             return (HostedField) result;
@@ -373,6 +379,9 @@ public class HostedUniverse implements Universe {
 
     @Override
     public HostedMethod lookup(JavaMethod method) {
+        if (method instanceof HostedMethod) {
+            return ((HostedMethod) method);
+        }
         JavaMethod result = lookupAllowUnresolved(method);
         if (result instanceof ResolvedJavaMethod) {
             return (HostedMethod) result;

@@ -424,7 +424,6 @@ public class FeatureImpl {
 
         public void registerAsRoot(AnalysisMethod aMethod, boolean invokeSpecial) {
             bb.addRootMethod(aMethod, invokeSpecial);
-            bb.markMethodImplementationInvoked(aMethod);
         }
 
         public void registerAsCompiled(Executable method, boolean invokeSpecial) {

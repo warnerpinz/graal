@@ -115,9 +115,15 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
     }
 
     @Override
-    public AnalysisMethod addRootMethod(AnalysisMethod method) {
-        if (!method.registerAsRootMethod()) {
-            return method;
+    public AnalysisMethod addRootMethod(AnalysisMethod method, boolean invokeSpecial) {
+        if (invokeSpecial) {
+            if (!method.registerAsVirtualRootMethod()) {
+                return method;
+            }
+        } else {
+            if (!method.registerAsDirectRootMethod()) {
+                return method;
+            }
         }
         if (!method.isStatic()) {
             markTypeInstantiated(method.getDeclaringClass());
@@ -413,7 +419,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
 
     private void registerForeignCall(ForeignCallDescriptor descriptor) {
         Optional<AnalysisMethod> targetMethod = getHostVM().handleForeignCall(descriptor, getProviders().getForeignCalls());
-        targetMethod.ifPresent(this::addRootMethod);
+        targetMethod.ifPresent(m -> addRootMethod(m, false));
     }
 
     private ReachabilityAnalysisMethod analysisMethod(ResolvedJavaMethod method) {
