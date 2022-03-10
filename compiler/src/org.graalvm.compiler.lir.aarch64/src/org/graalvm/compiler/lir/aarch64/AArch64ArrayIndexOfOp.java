@@ -32,6 +32,7 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
+import jdk.vm.ci.aarch64.AArch64Kind;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
@@ -50,6 +51,8 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
+
+import java.util.Arrays;
 
 @Opcode("AArch64_ARRAY_INDEX_OF")
 public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
@@ -82,6 +85,14 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
                     AllocatableValue result, AllocatableValue arrayPtr, AllocatableValue arrayOffset, AllocatableValue arrayLength, AllocatableValue fromIndex,
                     AllocatableValue[] searchValues) {
         super(TYPE);
+
+        assert result.getPlatformKind() == AArch64Kind.DWORD;
+        assert arrayPtr.getPlatformKind() == AArch64Kind.QWORD;
+        assert arrayOffset.getPlatformKind() == AArch64Kind.QWORD;
+        assert arrayLength.getPlatformKind() == AArch64Kind.DWORD;
+        assert fromIndex.getPlatformKind() == AArch64Kind.DWORD;
+        assert Arrays.stream(searchValues).allMatch(sv -> sv.getPlatformKind() == AArch64Kind.DWORD);
+
         this.arrayBaseOffset = arrayBaseOffset;
         this.elementByteSize = tool.getProviders().getMetaAccess().getArrayIndexScale(valueKind);
         this.findTwoConsecutive = findTwoConsecutive;

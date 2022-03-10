@@ -30,6 +30,7 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
+import jdk.vm.ci.aarch64.AArch64Kind;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
@@ -82,6 +83,13 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         super(TYPE);
 
         assert !kind.isNumericFloat() : "Float arrays comparison (bitwise_equal || both_NaN) isn't supported";
+
+        assert result.getPlatformKind() == AArch64Kind.DWORD;
+        assert array1.getPlatformKind() == AArch64Kind.QWORD && array1.getPlatformKind() == array2.getPlatformKind();
+        assert offset1 == null || offset1.getPlatformKind() == AArch64Kind.QWORD;
+        assert offset2 == null || offset2.getPlatformKind() == AArch64Kind.QWORD;
+        assert length.getPlatformKind() == AArch64Kind.DWORD;
+
         this.kind = kind;
 
         /*
