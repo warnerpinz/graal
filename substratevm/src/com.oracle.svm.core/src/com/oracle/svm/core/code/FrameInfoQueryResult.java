@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.code;
 
-import com.oracle.svm.core.ClassLoaderSupport;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
