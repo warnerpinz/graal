@@ -37,10 +37,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.BytecodeExceptionNodeSourceCollection;
-import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
-import org.graalvm.compiler.nodes.java.AbstractNewArrayNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.nativeimage.ImageSingletons;
 
 public class ImageBuildStatistics {
