@@ -358,11 +358,12 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
         masm.branchConditionally(ConditionFlag.HS, end);
         masm.sub(64, chunkToReadAddress, searchEnd, 32);
         /*
-         * Move back the 'searchEnd' by 32-bytes because at the end of 'searchByChunkLoopTail', the
-         * 'chunkToRead' would be reset to 32-byte aligned addressed. Thus, the
-         * searchByChunkLoopHead would never using 'chunkToReadAddress' >= 'endOfString' condition.
+         * Set 'searchEnd' to zero because at the end of 'searchByChunkLoopTail', the
+         * 'chunkToReadAddress' will be rolled back to a 32-byte aligned addressed. Thus, unless
+         * 'searchEnd' is adjusted, the 'processTail' comparison condition 'chunkToReadAddress' >=
+         * 'searchEnd' may never be true.
          */
-        masm.mov(64, searchEnd, chunkToReadAddress);
+        masm.mov(64, searchEnd, zr);
         masm.jmp(searchByChunkLoopTail);
 
         /* 4. If the element is found in a 32-byte chunk then find its position. */

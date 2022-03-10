@@ -375,11 +375,12 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         }
         masm.add(64, array2Address, array2Address, byteArrayLength);
         /*
-         * Move back the 'endOfArray1' by 32-bytes because at the end of 'compareByChunkTail', the
-         * 'chunkToRead' would be reset to 32-byte aligned addressed. Thus, the 'compareByChunkHead'
-         * would never be using 'array1Address' >= 'endOfArray1' condition.
+         * Set 'endOfArray1' to zero because at the end of 'compareByChunkTail', the 'array1Address'
+         * will be rolled back to a 32-byte aligned addressed. Thus, unless 'endOfArray1' is
+         * adjusted, the 'processTail' comparison condition 'array1Address' >= 'endOfArray1' may
+         * never be true.
          */
-        masm.mov(64, endOfArray1, array1Address);
+        masm.mov(64, endOfArray1, zr);
         masm.jmp(compareByChunkTail);
     }
 }
