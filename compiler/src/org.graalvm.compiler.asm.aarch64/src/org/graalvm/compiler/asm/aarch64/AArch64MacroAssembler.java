@@ -425,7 +425,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param size register size. Has to be 32 or 64.
      */
     public void mov(int size, Register dst, Register src) {
-        if (dst.equals(src)) {
+        if (dst.equals(src) && size == 64) {
             /* No action necessary */
         } else if (dst.equals(sp) || src.equals(sp)) {
             add(size, dst, src, 0);

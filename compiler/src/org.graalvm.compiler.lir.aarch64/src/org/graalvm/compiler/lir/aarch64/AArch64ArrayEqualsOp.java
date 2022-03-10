@@ -132,9 +132,10 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
             Register hasMismatch = sc1.getRegister();
             Register scratch = sc2.getRegister();
 
-            // Get array length in bytes.
+            // Get array length in bytes and store as a 64-bit value.
             int shiftAmt = NumUtil.log2Ceil(arrayIndexScale);
-            masm.lsl(64, byteArrayLength, asRegister(lengthValue), shiftAmt);
+            masm.mov(32, byteArrayLength, asRegister(lengthValue));
+            masm.lsl(64, byteArrayLength, byteArrayLength, shiftAmt);
             masm.compare(32, asRegister(lengthValue), 32 / arrayIndexScale);
             masm.branchConditionally(ConditionFlag.LE, scalarCompare);
 
@@ -146,7 +147,7 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
             // Return: hasMismatch is non-zero iff the arrays differ
             masm.bind(breakLabel);
             masm.cmp(64, hasMismatch, zr);
-            masm.cset(resultValue.getPlatformKind().getSizeInBytes() * Byte.SIZE, asRegister(resultValue), ConditionFlag.EQ);
+            masm.cset(32, asRegister(resultValue), ConditionFlag.EQ);
         }
     }
 
