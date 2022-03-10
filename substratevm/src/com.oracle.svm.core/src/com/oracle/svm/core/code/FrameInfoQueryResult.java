@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.code;
 
+import com.oracle.svm.core.ClassLoaderSupport;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
@@ -336,7 +338,10 @@ public class FrameInfoQueryResult {
         }
 
         ClassLoader classLoader = sourceClass.getClassLoader();
-        String classLoaderName = classLoader != null ? classLoader.getName() : null;
+        String classLoaderName = null;
+        if (classLoader != null && !isNativeImageClassLoader(classLoader)) {
+            classLoaderName = classLoader.getName();
+        }
         Module module = sourceClass.getModule();
         String moduleName = module.getName();
         ModuleDescriptor moduleDescriptor = module.getDescriptor();
@@ -345,6 +350,10 @@ public class FrameInfoQueryResult {
         String className = sourceClass.getName();
         String sourceFileName = DynamicHub.fromClass(sourceClass).getSourceFileName();
         return new StackTraceElement(classLoaderName, moduleName, moduleVersion, className, sourceMethodName, sourceFileName, sourceLineNumber);
+    }
+
+    private static boolean isNativeImageClassLoader(ClassLoader cl) {
+        return cl.equals(Object.class.getClassLoader());
     }
 
     public boolean isNativeMethod() {
