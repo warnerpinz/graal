@@ -28,6 +28,7 @@ import static jdk.vm.ci.aarch64.AArch64.SIMD;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
+import jdk.vm.ci.aarch64.AArch64Kind;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
@@ -94,7 +95,9 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
                     Value length2) {
         super(TYPE);
 
-        // TODO check platform kinds here
+        assert array1.getPlatformKind() == AArch64Kind.QWORD && array1.getPlatformKind() == array2.getPlatformKind();
+        assert length1.getPlatformKind() == AArch64Kind.DWORD && length1.getPlatformKind() == length2.getPlatformKind();
+        assert result.getPlatformKind() == AArch64Kind.DWORD;
 
         assert kind1 == JavaKind.Byte || kind1 == JavaKind.Char;
         assert kind2 == JavaKind.Byte || kind2 == JavaKind.Char;
@@ -170,8 +173,8 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
         }
 
         /* Get length of the smaller string */
-        masm.cmp(64, length1, length2);
-        masm.csel(64, length, length1, length2, ConditionFlag.LT);
+        masm.cmp(32, length1, length2);
+        masm.csel(32, length, length1, length2, ConditionFlag.LT);
 
         /* One of strings is empty */
         masm.cbz(64, length, stringsEqualUptoLength);
@@ -235,7 +238,7 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
         }
         masm.ldr(elementBitSize, result, AArch64Address.createImmediateAddress(elementBitSize, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, array2, elementByteSize));
         if (isUL) {
-            /* UL's input has been swapped in AArch64StringUTF16Substitutions.compareToLatin1. */
+            /* The inputs have been swapped. */
             masm.subs(32, result, result, temp);
         } else {
             masm.subs(32, result, temp, result);
