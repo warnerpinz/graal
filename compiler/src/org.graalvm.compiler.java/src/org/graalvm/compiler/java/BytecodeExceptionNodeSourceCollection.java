@@ -30,6 +30,7 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
+import org.graalvm.compiler.nodes.java.AbstractNewArrayNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 
@@ -42,6 +43,7 @@ public class BytecodeExceptionNodeSourceCollection {
     private static final ConcurrentLinkedQueue<NodeSourcePosition> exceptionObjects = new ConcurrentLinkedQueue<>();
     private static final ConcurrentLinkedQueue<NodeSourcePosition> invokes = new ConcurrentLinkedQueue<>();
     private static final ConcurrentLinkedQueue<NodeSourcePosition> instanceOf = new ConcurrentLinkedQueue<>();
+    private static final ConcurrentLinkedQueue<NodeSourcePosition> abstractNewArray = new ConcurrentLinkedQueue<>();
 
     public void collect(StructuredGraph graph) {
         for (Node node : graph.getNodes()) {
@@ -63,6 +65,8 @@ public class BytecodeExceptionNodeSourceCollection {
                  * A Java instanceof test can produce bytecode exception.
                  */
                 instanceOf.add(node.getNodeSourcePosition());
+            } else if (node instanceof AbstractNewArrayNode) {
+                abstractNewArray.add(node.getNodeSourcePosition());
             }
         }
     }
@@ -85,6 +89,10 @@ public class BytecodeExceptionNodeSourceCollection {
 
     private static boolean isInstanceOfPosition(NodeSourcePosition nodeSourcePosition) {
         return instanceOf.contains(nodeSourcePosition);
+    }
+
+    private static boolean isAbstractNewArray(NodeSourcePosition nodeSourcePosition) {
+        return abstractNewArray.contains(nodeSourcePosition);
     }
 
     private static NodeSourcePosition getRootNodeSourcePosition(NodeSourcePosition nodeSourcePosition) {
@@ -183,5 +191,9 @@ public class BytecodeExceptionNodeSourceCollection {
 
     public static boolean comingFromInstanceOf(NodeSourcePosition nodeSourcePosition) {
         return isInstanceOfPosition(getRootNodeSourcePosition(nodeSourcePosition)) || hasPrefix(nodeSourcePosition, instanceOf) || hasSuffix(nodeSourcePosition, instanceOf);
+    }
+
+    public static boolean comingFromAbstractNewArray(NodeSourcePosition nodeSourcePosition) {
+        return isAbstractNewArray(getRootNodeSourcePosition(nodeSourcePosition)) || hasPrefix(nodeSourcePosition, abstractNewArray) || hasSuffix(nodeSourcePosition, abstractNewArray);
     }
 }

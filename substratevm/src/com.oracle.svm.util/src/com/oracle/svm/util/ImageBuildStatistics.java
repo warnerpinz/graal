@@ -37,7 +37,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.BytecodeExceptionNodeSourceCollection;
+import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
+import org.graalvm.compiler.nodes.java.AbstractNewArrayNode;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.nativeimage.ImageSingletons;
 
 public class ImageBuildStatistics {
@@ -129,6 +132,10 @@ public class ImageBuildStatistics {
                     } else if (BytecodeExceptionNodeSourceCollection.comingFromInstanceOf(nodeSourcePosition)) {
                         /*
                          * This node source position is coming from instance of node.
+                         */
+                    } else if (BytecodeExceptionNodeSourceCollection.comingFromAbstractNewArray(nodeSourcePosition)) {
+                        /*
+                         * This node source position is coming from abstract new array node (length check is emit).
                          */
                     } else {
                         throw GraalError.shouldNotReachHere("Found new node " + nodeSourcePosition + " after bytecode parsing in graph for " + method.format("%h.%n(%p)"));
