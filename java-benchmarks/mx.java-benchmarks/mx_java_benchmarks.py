@@ -447,6 +447,10 @@ class QuarkusHelloWorldWrkBenchmarkSuite(BaseQuarkusHelloWorldBenchmarkSuite, mx
     def getScriptPath(self, config):
         return os.path.join(self.applicationDist(), "workloads", config["script"])
 
+    def extra_image_build_argument(self, benchmark, args):
+        return super(QuarkusHelloWorldWrkBenchmarkSuite, self).extra_image_build_argument(benchmark, args) + [
+            '--initialize-at-run-time=io.netty.internal.tcnative.SSL,io.netty.handler.codec.compression.ZstdOptions']
+
 
 mx_benchmark.add_bm_suite(QuarkusHelloWorldWrkBenchmarkSuite())
 
